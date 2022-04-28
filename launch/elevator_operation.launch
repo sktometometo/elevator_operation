@@ -1,0 +1,63 @@
+<launch>
+    <arg name="launch_spinal" default="false"/>
+    <arg name="device_spinal" default="/dev/ttyUSB0"/>
+
+    <arg name="launch_switchbot_client" default="false"/>
+    <arg name="switchbot_token_yaml" default="/var/lib/robot/credentials/switchbot_token.yaml"/>
+
+    <!-- elevator operation server -->
+    <node
+        pkg="elevator_operation"
+        type="elevator_operation_server"
+        name="elevator_operation_server"
+        output="screen"
+        >
+        <remap from="~input_door_points" to="/elevator_operation/elevator_door_points" />
+        <remap from="~input_barometer" to="/spinal/baro" />
+        <remap from="~input_imu" to="/spinal/imu" />
+        <rosparam subst_value="true">
+            threshold_door_points: 10
+            threshold_altitude: 2
+            initial_elevator_floor: 7
+            altitude_per_floor: 7
+            threshold_accel: 0.2
+            stable_accel: 0.0
+        </rosparam>
+    </node>
+
+    <!-- switchbot_ros -->
+    <node
+        pkg="switchbot_ros"
+        type="switchbot_ros_server.py"
+        name="switchbot_ros"
+        output="screen"
+        if="$(arg launch_switchbot_client)">
+        <rosparam
+            command="load"
+            file="$(arg switchbot_token_yaml)"
+            />
+    </node>
+
+    <!-- spinal (Imu, barometer and so on) -->
+    <group ns="/spinal" if="$(arg launch_spinal)">
+        <node
+            pkg="rosserial_python"
+            type="serial_node.py"
+            name="fetch_spinal"
+            output="screen"
+            >
+            <rosparam subst_value="true">
+                baud: 921600
+                port: $(arg device_spinal)
+            </rosparam>
+        </node>
+    </group>
+
+    <!-- elevator_frame -->
+    <node
+        pkg="tf2_ros"
+        type="static_tranform_publisher"
+        name="elevator_frame_publisher"
+        args="2 -32.5 0 0 0 0 /eng2/7f /elevator_frame"
+        />
+</launch>
