@@ -1,5 +1,8 @@
 <launch>
-    <arg name="launch_spinal" default="false"/>
+    <arg name="input_topic_points" default="empty"/>
+    <arg name="elevator_door_frame_id" default="elevator_door"/>
+
+    <arg name="launch_spinal" default="true"/>
     <arg name="device_spinal" default="/dev/ttyUSB0"/>
 
     <arg name="launch_switchbot_client" default="false"/>
@@ -8,7 +11,7 @@
     <!-- elevator operation server -->
     <node
         pkg="elevator_operation"
-        type="elevator_operation_server"
+        type="elevator_operation_server.py"
         name="elevator_operation_server"
         output="screen"
         >
@@ -25,17 +28,17 @@
         </rosparam>
     </node>
 
-    <!-- switchbot_ros -->
+    <!-- look at target server -->
+    <!-- TODO -->
     <node
-        pkg="switchbot_ros"
-        type="switchbot_ros_server.py"
-        name="switchbot_ros"
+        pkg="elevator_operation"
+        type="look-at-elevator.l"
+        name="look_at_target_server"
         output="screen"
-        if="$(arg launch_switchbot_client)">
-        <rosparam
-            command="load"
-            file="$(arg switchbot_token_yaml)"
-            />
+        >
+        <rosparam subst_value="true">
+            target_frame_id: $(arg elevator_door_frame_id)
+        </rosparam>
     </node>
 
     <!-- spinal (Imu, barometer and so on) -->
@@ -52,6 +55,66 @@
             </rosparam>
         </node>
     </group>
+
+    <!-- LPF for accel -->
+    <node
+        pkg="elevator_operation"
+        type="lowpass_filter.py"
+        name="lowpass_filter"
+        >
+        <rosparam subst_value="true" >
+            freq_cutoff: 1.0
+        </rosparam>
+    </node>
+
+    <!-- elevator door detector -->
+    <node
+        pkg="nodelet"
+        type="nodelet"
+        name="elevator_detection_door_detector_attention_clipper"
+        args="standalone jsk_pcl/AttentionClipper"
+        >
+        <remap from="~input/points" to="$(arg input_topic_points)"/>
+        <rosparam subst_value="true">
+            initial_pos: [0, 0, 0.5]
+            initial_rot: [0, 0, 0]
+            dimension_x: 0.5
+            dimension_y: 0.5
+            dimension_z: 0.8
+            frame_id: $(arg elevator_door_frame_id)
+        </rosparam>
+    </node>
+    <node
+        pkg="jsk_pcl_ros"
+        type="extract_indices"
+        name="elevator_detection_door_detector_extract_indices"
+        >
+        <remap from="~input" to="$(arg input_topic_points)"/>
+        <remap from="~indices" to="elevator_detection_door_detector_attention_clipper/output/point_indices"/>
+        <remap from="~output" to="/elevator_operation/elevator_door_points"/>
+    </node>
+    <node
+        pkg="elevator_operation"
+        type="elevator_door_opening_checker.py"
+        name="elevator_door_opening_checker"
+        >
+        <remap from="~input" to="/elevator_operation/elevator_door_points" />
+    </node>
+
+    <!-- switchbot_ros -->
+    <!--
+    <node
+        pkg="switchbot_ros"
+        type="switchbot_ros_server.py"
+        name="switchbot_ros"
+        output="screen"
+        if="$(arg launch_switchbot_client)">
+        <rosparam
+            command="load"
+            file="$(arg switchbot_token_yaml)"
+            />
+    </node>
+    -->
 
     <!-- elevator_frame -->
     <node

@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
 import actionlib
-import roslaunch
-import rospkg
 import rospy
 
 import math
-import threading
 
 from switchbot_ros.msg import SwitchBotCommandAction
 from sensor_msgs.msg import PointCloud2
@@ -14,19 +11,11 @@ from spinal.msg import Barometer
 from spinal.msg import Imu
 from std_msgs.msg import Bool
 from std_msgs.msg import Int16
-from std_srvs.srv import Trigger
-from std_srvs.srv import TriggerResponse
 
 
 class ElevatorOperationServer(object):
 
     def __init__(self):
-
-        # variables for roslaunch
-        self.roslaunch_parent = None
-        self.lock_roslaunch_parent = threading.Lock()
-        self.input_topic_points = rospy.get_param('~input_topic_points')
-        self.elevator_door_frame_id = rospy.get_param('~elevator_door_frame_id')
 
         # parameters for door opening checker
         self.threshold_door_points = rospy.get_param(
@@ -41,7 +30,7 @@ class ElevatorOperationServer(object):
         self.altitude_per_elevator_floor = rospy.get_param(
             '~altitude_per_floor', 7)
         self.initial_altitude = rospy.wait_for_message(
-            '~input_barometer', Barometer, timeout=rospy.Duration(5))
+            '~input_barometer', Barometer, timeout=rospy.Duration(5)).altitude
         # variables for elevator floor detection
         self.current_elevator_floor = self.initial_elevator_floor
 
@@ -49,6 +38,7 @@ class ElevatorOperationServer(object):
         self.threshold_accel = rospy.get_param('~threshold_accel', 0.2)
         self.stable_accel = rospy.get_param('~stable_accel', 0.0)
         # variables for floor moving detection
+        self.elevator_state = 'halt'
         self.rest_elevator = False
 
         # ROS Action client
@@ -61,16 +51,6 @@ class ElevatorOperationServer(object):
         self.pub_door_is_open = rospy.Publisher('~door_is_open', Bool, queue_size=1)
         self.pub_current_elevator_floor = rospy.Publisher('~current_elevator_floor', Int16, queue_size=1)
         self.pub_rest_elevator = rospy.Publisher('~rest_elevator', Bool, queue_size=1)
-
-        # ROS Service
-        self.service_start_detection = rospy.Service(
-            '~start_detection',
-            Trigger,
-            self.handler_start_detection)
-        self.service_stop_detection = rospy.Service(
-            '~stop_detection',
-            Trigger,
-            self.handler_stop_detection)
 
         # ROS Subscribers
         self.subscriber_door_points = rospy.Subscriber(
@@ -115,42 +95,9 @@ class ElevatorOperationServer(object):
             self.rest_elevator = False
         self.pub_rest_elevator.publish(Bool(data=self.rest_elevator))
 
-    def handler_start_detection(self, req):
 
-        success, message = self._start_detection_launch()
-        return TriggerResponse(success, message)
+if __name__ == '__main__':
 
-    def handler_stop_detection(self, req):
-
-        success, message = self._stop_detection_launch()
-        return TriggerResponse(success, message)
-
-    def _start_detection_launch(self):
-
-        with self.lock_roslaunch_parent:
-            uuid = roslaunch.rlutil.get_or_generate_uuid(None, True)
-            roslaunch_path = \
-                rospkg.RosPack().get_path('elevator_operation') +\
-                '/launch/elevator_detection.launch'
-            roslaunch_cli_args = [
-                    roslaunch_path,
-                    'input_topic_points:={}'.format(self.input_topic_points),
-                    'elevator_door_frame_id:={}'.format(self.elevator_door_frame_id),
-                    ]
-            roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(
-                roslaunch_cli_args)
-            self.roslaunch_parent = roslaunch.parent.ROSLaunchParent(
-                uuid,
-                roslaunch_file
-            )
-            self.roslaunch_parent.start()
-
-        return True, 'success'
-
-    def _stop_detection_launch(self):
-
-        with self.lock_roslaunch_parent:
-            self.roslaunch_parent.shutdown()
-            self.roslaunch_parent = None
-
-        return True, 'success'
+    rospy.init_node('elevator_operation_server')
+    node = ElevatorOperationServer()
+    rospy.spin()
