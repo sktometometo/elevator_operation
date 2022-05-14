@@ -30,7 +30,7 @@ class ElevatorOperationServer(object):
         self.altitude_per_elevator_floor = rospy.get_param(
             '~altitude_per_floor', 7)
         self.initial_altitude = rospy.wait_for_message(
-            '~input_barometer', Barometer, timeout=rospy.Duration(5)).altitude
+            '~input_barometer', Barometer, timeout=rospy.Duration(30)).altitude
         # variables for elevator floor detection
         self.current_elevator_floor = self.initial_elevator_floor
 
