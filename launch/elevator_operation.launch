@@ -1,39 +1,35 @@
 <launch>
-    <arg name="input_topic_points" default="/head_camera/depth_registered/points"/>
-    <arg name="elevator_door_frame_id" default="elevator_door"/>
+    <arg name="input_topic_points" default="/head_camera/depth_registered/points" />
+    <arg name="elevator_door_frame_id" default="elevator_door" />
 
-    <arg name="launch_spinal" default="true"/>
-    <arg name="device_spinal" default="/dev/ttyUSB0"/>
+    <arg name="launch_spinal" default="true" />
+    <arg name="device_spinal" default="/dev/ttyUSB0" />
 
-    <arg name="launch_switchbot_client" default="false"/>
-    <arg name="switchbot_token_yaml" default="/var/lib/robot/credentials/switchbot_token.yaml"/>
+    <arg name="launch_switchbot_client" default="false" />
+    <arg name="switchbot_token_yaml" default="/var/lib/robot/credentials/switchbot_token.yaml" />
 
     <!-- elevator operation server -->
-    <node
-        pkg="elevator_operation"
-        type="elevator_operation_server.py"
-        name="elevator_operation_server"
-        output="screen"
-        >
+    <node pkg="elevator_operation" type="elevator_operation_server.py" name="elevator_operation_server" output="screen">
         <remap from="~input_door_point_checker" to="/elevator_door_opening_checker/output" />
         <remap from="~input_barometer" to="/spinal/baro" />
         <remap from="~input_accel" to="/lowpass_filter/output" />
+        <remap from="~look_at" to="/look_at_target_server/look_at_target" />
+        <remap from="~change_floor" to="/change_floor_server/input" />
         <rosparam subst_value="true">
+            initial_floor: 7
             threshold_door_points: 10
             threshold_altitude: 2
-            initial_elevator_floor: 7
-            altitude_per_floor: 7
             threshold_accel: 0.2
         </rosparam>
+        <rosparam
+            ns="~elevator_configuration"
+            command="load"
+            file="$(find elevator_operation)/config/config.yaml"
+            />
     </node>
 
     <!-- look at target server -->
-    <node
-        pkg="elevator_operation"
-        type="look-at-elevator.l"
-        name="look_at_target_server"
-        output="screen"
-        >
+    <node pkg="elevator_operation" type="look-at-elevator.l" name="look_at_target_server" output="screen">
         <rosparam subst_value="true">
             target_frame_id: $(arg elevator_door_frame_id)
         </rosparam>
@@ -41,12 +37,7 @@
 
     <!-- spinal (Imu, barometer and so on) -->
     <group ns="/spinal" if="$(arg launch_spinal)">
-        <node
-            pkg="rosserial_python"
-            type="serial_node.py"
-            name="fetch_spinal"
-            output="screen"
-            >
+        <node pkg="rosserial_python" type="serial_node.py" name="fetch_spinal" output="screen">
             <rosparam subst_value="true">
                 baud: 921600
                 port: $(arg device_spinal)
@@ -55,24 +46,15 @@
     </group>
 
     <!-- LPF for accel -->
-    <node
-        pkg="elevator_operation"
-        type="lowpass_filter.py"
-        name="lowpass_filter"
-        >
-        <rosparam subst_value="true" >
+    <node pkg="elevator_operation" type="lowpass_filter.py" name="lowpass_filter">
+        <rosparam subst_value="true">
             freq_cutoff: 1.0
         </rosparam>
     </node>
 
     <!-- elevator door detector -->
-    <node
-        pkg="nodelet"
-        type="nodelet"
-        name="elevator_detection_door_detector_attention_clipper"
-        args="standalone jsk_pcl/AttentionClipper"
-        >
-        <remap from="~input/points" to="$(arg input_topic_points)"/>
+    <node pkg="nodelet" type="nodelet" name="elevator_detection_door_detector_attention_clipper" args="standalone jsk_pcl/AttentionClipper">
+        <remap from="~input/points" to="$(arg input_topic_points)" />
         <rosparam subst_value="true">
             initial_pos: [0, 0, 0]
             initial_rot: [0, 0, 0]
@@ -82,20 +64,12 @@
             frame_id: $(arg elevator_door_frame_id)
         </rosparam>
     </node>
-    <node
-        pkg="jsk_pcl_ros"
-        type="extract_indices"
-        name="elevator_detection_door_detector_extract_indices"
-        >
-        <remap from="~input" to="$(arg input_topic_points)"/>
-        <remap from="~indices" to="elevator_detection_door_detector_attention_clipper/output/point_indices"/>
-        <remap from="~output" to="/elevator_operation/elevator_door_points"/>
+    <node pkg="jsk_pcl_ros" type="extract_indices" name="elevator_detection_door_detector_extract_indices">
+        <remap from="~input" to="$(arg input_topic_points)" />
+        <remap from="~indices" to="elevator_detection_door_detector_attention_clipper/output/point_indices" />
+        <remap from="~output" to="/elevator_operation/elevator_door_points" />
     </node>
-    <node
-        pkg="elevator_operation"
-        type="elevator_door_opening_checker.py"
-        name="elevator_door_opening_checker"
-        >
+    <node pkg="elevator_operation" type="elevator_door_opening_checker.py" name="elevator_door_opening_checker">
         <remap from="~input" to="/elevator_operation/elevator_door_points" />
     </node>
 
@@ -115,10 +89,5 @@
     -->
 
     <!-- elevator_frame -->
-    <node
-        pkg="tf"
-        type="static_transform_publisher"
-        name="elevator_frame_publisher"
-        args="2 -32.5 1 0 0 0 /eng2/7f /$(arg elevator_door_frame_id) 50"
-        />
+    <node pkg="tf" type="static_transform_publisher" name="elevator_frame_publisher" args="2 -32.5 1 0 0 0 /eng2/7f /$(arg elevator_door_frame_id) 50" />
 </launch>
