@@ -17,6 +17,8 @@ from std_srvs.srv import Trigger
 
 from move_base_msgs.msg import MoveBaseAction
 from move_base_msgs.msg import MoveBaseGoal
+from elevator_operation.msg import MoveElevatorAction
+from elevator_operation.msg import MoveElevatorResult
 
 
 class ElevatorOperationServer(object):
@@ -117,7 +119,24 @@ class ElevatorOperationServer(object):
             Float32,
             self._callback_imu)
 
+        #######################################################################
+        # ROS Action Server
+        #######################################################################
+        self.action_server = actionlib.SimpleActionServer(
+                '~move_elevator',
+                MoveElevatorAction,
+                self.execute_cb,
+                auto_start=False
+                )
+        self.action_server.start()
+
         rospy.loginfo('initialized')
+
+    def execute_cb(self, goal):
+        self.move_elevator.move_elevator(goal.target_floor)
+        result = MoveElevatorResult()
+        result.success = True
+        self.action_server.set_succeeded(result)
 
     def move_elevator(self, target_floor):
 
