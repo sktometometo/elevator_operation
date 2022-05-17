@@ -11,6 +11,8 @@ from spinal.msg import Barometer
 from spinal.msg import Imu
 from std_msgs.msg import Bool
 from std_msgs.msg import Int16
+from std_msgs.msg import Int64
+from std_msgs.msg import Float32
 
 
 class ElevatorOperationServer(object):
@@ -36,7 +38,8 @@ class ElevatorOperationServer(object):
 
         # parameters for floor moving detection
         self.threshold_accel = rospy.get_param('~threshold_accel', 0.2)
-        self.stable_accel = rospy.get_param('~stable_accel', 0.0)
+        self.initial_accel = rospy.wait_for_message(
+            '~input_accel', Float32, timeout=rospy.Duration(30)).data
         # variables for floor moving detection
         self.elevator_state = 'halt'
         self.rest_elevator = False
@@ -54,8 +57,8 @@ class ElevatorOperationServer(object):
 
         # ROS Subscribers
         self.subscriber_door_points = rospy.Subscriber(
-            '~input_door_points',
-            PointCloud2,
+            '~input_door_point_checker',
+            Int64,
             self.callback_door_points)
 
         self.subscriber_barometer = rospy.Subscriber(
@@ -64,14 +67,16 @@ class ElevatorOperationServer(object):
             self.callback_barometer)
 
         self.subscriber_imu = rospy.Subscriber(
-            '~input_imu',
-            Imu,
+            '~input_accel',
+            Float32,
             self.callback_imu)
+
+        rospy.loginfo('initialized')
 
     def callback_door_points(self, msg):
 
-        rospy.logdebug('door points: {}'.format(len(msg.data)))
-        if len(msg.data) < self.threshold_door_points:
+        rospy.logdebug('door points: {}'.format(msg.data))
+        if msg.data < self.threshold_door_points:
             self.door_is_open = True
         else:
             self.door_is_open = False
@@ -88,8 +93,8 @@ class ElevatorOperationServer(object):
 
     def callback_imu(self, msg):
 
-        rospy.logdebug('acc z: {}'.format(msg.acc_data[2]))
-        if math.fabs(msg.acc_data[2] - self.stable_accel) < self.threshold_accel:
+        rospy.logdebug('acc z: {}'.format(msg.data))
+        if math.fabs(msg.data - self.initial_accel) < self.threshold_accel:
             self.rest_elevator = True
         else:
             self.rest_elevator = False

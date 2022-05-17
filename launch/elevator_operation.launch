@@ -1,5 +1,5 @@
 <launch>
-    <arg name="input_topic_points" default="/l515_head/depth/color/points"/>
+    <arg name="input_topic_points" default="/head_camera/depth_registered/points"/>
     <arg name="elevator_door_frame_id" default="elevator_door"/>
 
     <arg name="launch_spinal" default="true"/>
@@ -15,21 +15,19 @@
         name="elevator_operation_server"
         output="screen"
         >
-        <remap from="~input_door_points" to="/elevator_operation/elevator_door_points" />
+        <remap from="~input_door_point_checker" to="/elevator_door_opening_checker/output" />
         <remap from="~input_barometer" to="/spinal/baro" />
-        <remap from="~input_imu" to="/spinal/imu" />
+        <remap from="~input_accel" to="/lowpass_filter/output" />
         <rosparam subst_value="true">
             threshold_door_points: 10
             threshold_altitude: 2
             initial_elevator_floor: 7
             altitude_per_floor: 7
             threshold_accel: 0.2
-            stable_accel: 0.0
         </rosparam>
     </node>
 
     <!-- look at target server -->
-    <!-- TODO -->
     <node
         pkg="elevator_operation"
         type="look-at-elevator.l"
@@ -76,7 +74,7 @@
         >
         <remap from="~input/points" to="$(arg input_topic_points)"/>
         <rosparam subst_value="true">
-            initial_pos: [0, 0, 0.5]
+            initial_pos: [0, 0, 0]
             initial_rot: [0, 0, 0]
             dimension_x: 0.5
             dimension_y: 0.5
@@ -118,9 +116,9 @@
 
     <!-- elevator_frame -->
     <node
-        pkg="tf2_ros"
+        pkg="tf"
         type="static_transform_publisher"
         name="elevator_frame_publisher"
-        args="2 -32.5 0 0 0 0 /eng2/7f /$(arg elevator_door_frame_id)"
+        args="2 -32.5 1 0 0 0 /eng2/7f /$(arg elevator_door_frame_id) 50"
         />
 </launch>
