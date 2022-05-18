@@ -13,7 +13,7 @@ from std_msgs.msg import Int64
 from std_msgs.msg import String
 from std_msgs.msg import Float32
 
-from std_srvs.srv import Trigger
+from elevator_operation.srv import LookAtTarget
 
 from move_base_msgs.msg import MoveBaseAction
 from move_base_msgs.msg import MoveBaseGoal
@@ -77,7 +77,7 @@ class ElevatorOperationServer(object):
         #######################################################################
         # Look At server client
         #######################################################################
-        self.look_at_client = rospy.ServiceProxy('~look_at', Trigger)
+        self.look_at_client = rospy.ServiceProxy('~look_at', LookAtTarget)
 
         #######################################################################
         # Move Base client
@@ -154,7 +154,7 @@ class ElevatorOperationServer(object):
         rospy.loginfo('moved to the front of elevator')
 
         # look to the door
-        self.look_at_client()
+        self.look_at_client(self.elevator_configuration[self.current_floor]['door_frame_id'])
         rospy.loginfo('look at elevator')
 
         # Reset altitude
@@ -215,7 +215,8 @@ class ElevatorOperationServer(object):
             String(data=self.elevator_configuration[target_floor]['map_name']))
 
         # look to the door
-        self.look_at_client()
+        self.look_at_client(self.elevator_configuration[target_floor]['door_frame_id'])
+        rospy.loginfo('look at elevator')
 
         # Wait until arrive
         rate = rospy.Rate(1)

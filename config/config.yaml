@@ -1,6 +1,7 @@
 - floor: 7
   altitude: 4
   map_name: '/eng2/7f'
+  door_frame_id: '/eng2/7f/elevator_door'
   outside_pose:
     position: [2.631, -30.344, -0.000]
     orientation: [0.000, 0.000, -0.861, 0.509]
@@ -12,6 +13,7 @@
 - floor: 3
   altitude: -15
   map_name: '/eng2/3f'
+  door_frame_id: '/eng2/3f/elevator_door'
   outside_pose:
     position: [2.631, -30.344, -0.000]
     orientation: [0.000, 0.000, -0.861, 0.509]
