@@ -8,8 +8,7 @@
     position: [1.634, -33.990, -0.000]
     orientation: [-0.000, -0.000, 0.476, 0.879]
   buttons:
-    up: '/eng2/7f/elevator_bot_up'
-    down: '/eng2/7f/elevator_bot_up'
+    down: '/eng2/7f/elevator_bot_down'
 - floor: 3
   altitude: 2
   map_name: '/eng2/3f'

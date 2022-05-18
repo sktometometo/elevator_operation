@@ -4,7 +4,7 @@ import math
 
 import actionlib
 import rospy
-from swtichbot_ros.switchbot_ros_client import SwitchBotROSClient
+from switchbot_ros.switchbot_ros_client import SwitchBotROSClient
 
 from spinal.msg import Barometer
 from std_msgs.msg import Bool
@@ -133,7 +133,7 @@ class ElevatorOperationServer(object):
         rospy.loginfo('initialized')
 
     def execute_cb(self, goal):
-        self.move_elevator.move_elevator(goal.target_floor)
+        self.move_elevator(goal.target_floor)
         result = MoveElevatorResult()
         result.success = True
         self.action_server.set_succeeded(result)
@@ -143,24 +143,30 @@ class ElevatorOperationServer(object):
         # move robot to the front of elevator
         self._move_to(
             self.elevator_configuration[self.current_floor]['outside_pose']['position'],
-            self.elevator_configuration[self.current_floor]['outside_pose']['orientation']
+            self.elevator_configuration[self.current_floor]['outside_pose']['orientation'],
+            wait=True
         )
+        rospy.loginfo('moved to the front of elevator')
 
         # look to the door
         self.look_at_client()
+        rospy.loginfo('look at elevator')
 
         # Reset altitude
         self._reset_initial_altitude(self.current_floor)
+        rospy.loginfo('reset altitude')
 
         # Call elevator
         if target_floor > self.current_floor:
             button_type = 'up'
         else:
             button_type = 'down'
-        self.switchbot_ros_client.control_device(
+        ret = self.switchbot_ros_client.control_device(
             self.elevator_configuration[self.current_floor]['buttons'][button_type],
-            'press'
+            'press',
+            wait=True
         )
+        rospy.loginfo('Call elevator: {}'.format(ret))
 
         # Wait until arrive
         rate = rospy.Rate(1)
@@ -175,6 +181,17 @@ class ElevatorOperationServer(object):
             self.elevator_configuration[self.current_floor]['inside_pose']['position'],
             self.elevator_configuration[self.current_floor]['inside_pose']['orientation']
         )
+        rate = rospy.Rate(0.5)
+        while not rospy.is_shutdown():
+            # press button again
+            ret = self.switchbot_ros_client.control_device(
+                self.elevator_configuration[self.current_floor]['buttons'][button_type],
+                'press',
+                wait=True
+            )
+            rate.sleep()
+            if self._move_to_wait(timeout=rospy.Duration(1)):
+                break
 
         # Call elevator from target floor
         if target_floor < self.current_floor:
@@ -183,7 +200,8 @@ class ElevatorOperationServer(object):
             button_type = 'down'
         self.switchbot_ros_client.control_device(
             self.elevator_configuration[target_floor]['buttons'][button_type],
-            'press'
+            'press',
+            wait=True
         )
 
         # Change map
@@ -209,25 +227,40 @@ class ElevatorOperationServer(object):
             self.elevator_configuration[target_floor]['outside_pose']['position'],
             self.elevator_configuration[target_floor]['outside_pose']['orientation']
         )
+        rate = rospy.Rate(0.5)
+        while not rospy.is_shutdown():
+            # press button again
+            self.switchbot_ros_client.control_device(
+                self.elevator_configuration[target_floor]['buttons'][button_type],
+                'press',
+                wait=True
+            )
+            rate.sleep()
+            if self._move_to_wait(timeout=rospy.Duration(1)):
+                break
 
         self.current_floor = target_floor
 
         rospy.loginfo('Finished.')
 
-    def _move_to(self, position, orientation, frame_id='map'):
+    def _move_to(self, position, orientation, frame_id='map', wait=False):
 
         goal = MoveBaseGoal()
-        goal.header.stamp = rospy.Time.now()
-        goal.header.frame_id = frame_id
-        goal.pose.position.x = position[0]
-        goal.pose.position.y = position[1]
-        goal.pose.position.z = position[2]
-        goal.pose.orientation.x = orientation[0]
-        goal.pose.orientation.y = orientation[1]
-        goal.pose.orientation.z = orientation[2]
-        goal.pose.orientation.w = orientation[3]
-        self.move_base_client.send_goal_and_wait(goal)
-        return self.move_base_client.get_result()
+        goal.target_pose.header.stamp = rospy.Time.now()
+        goal.target_pose.header.frame_id = frame_id
+        goal.target_pose.pose.position.x = position[0]
+        goal.target_pose.pose.position.y = position[1]
+        goal.target_pose.pose.position.z = position[2]
+        goal.target_pose.pose.orientation.x = orientation[0]
+        goal.target_pose.pose.orientation.y = orientation[1]
+        goal.target_pose.pose.orientation.z = orientation[2]
+        goal.target_pose.pose.orientation.w = orientation[3]
+        self.move_base_client.send_goal(goal)
+        if wait:
+            self._move_to_wait()
+
+    def _move_to_wait(self, timeout=rospy.Duration(0)):
+        self.move_base_client.wait_for_result(timeout=timeout)
 
     def _reset_initial_altitude(self, floor):
         self.initial_elevator_floor = floor
