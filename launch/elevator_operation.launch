@@ -18,7 +18,7 @@
         <rosparam subst_value="true">
             initial_floor: 7
             threshold_door_points: 10
-            threshold_altitude: 2
+            threshold_altitude: 1
             threshold_accel: 0.2
         </rosparam>
         <rosparam
@@ -58,8 +58,8 @@
         <rosparam subst_value="true">
             initial_pos: [0, 0, 0]
             initial_rot: [0, 0, 0]
-            dimension_x: 0.5
-            dimension_y: 0.5
+            dimension_x: 1.0
+            dimension_y: 1.0
             dimension_z: 0.8
             frame_id: $(arg elevator_door_frame_id)
         </rosparam>

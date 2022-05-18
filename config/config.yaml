@@ -1,5 +1,5 @@
 - floor: 7
-  altitude: 10
+  altitude: 4
   map_name: '/eng2/7f'
   outside_pose:
     position: [2.631, -30.344, -0.000]
@@ -10,7 +10,7 @@
   buttons:
     down: '/eng2/7f/elevator_bot_down'
 - floor: 3
-  altitude: 2
+  altitude: -15
   map_name: '/eng2/3f'
   outside_pose:
     position: [2.631, -30.344, -0.000]

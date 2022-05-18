@@ -133,10 +133,15 @@ class ElevatorOperationServer(object):
         rospy.loginfo('initialized')
 
     def execute_cb(self, goal):
-        self.move_elevator(goal.target_floor)
         result = MoveElevatorResult()
-        result.success = True
-        self.action_server.set_succeeded(result)
+        if goal.target_floor not in self.elevator_configuration:
+            rospy.logerr('target_floor: {} not in elevator_configuration'.format(goal.target_floor))
+            result.success = False
+            self.action_server.set_aborted(result)
+        else:
+            self.move_elevator(goal.target_floor)
+            result.success = True
+            self.action_server.set_succeeded(result)
 
     def move_elevator(self, target_floor):
 
@@ -181,7 +186,7 @@ class ElevatorOperationServer(object):
             self.elevator_configuration[self.current_floor]['inside_pose']['position'],
             self.elevator_configuration[self.current_floor]['inside_pose']['orientation']
         )
-        rate = rospy.Rate(0.5)
+        rate = rospy.Rate(0.2)
         while not rospy.is_shutdown():
             # press button again
             ret = self.switchbot_ros_client.control_device(
@@ -192,6 +197,7 @@ class ElevatorOperationServer(object):
             rate.sleep()
             if self._move_to_wait(timeout=rospy.Duration(1)):
                 break
+        ret = self._move_to_result()
 
         # Call elevator from target floor
         if target_floor < self.current_floor:
@@ -205,7 +211,7 @@ class ElevatorOperationServer(object):
         )
 
         # Change map
-        self.pub_change_floor(
+        self.pub_change_floor.publish(
             String(data=self.elevator_configuration[target_floor]['map_name']))
 
         # look to the door
@@ -227,7 +233,7 @@ class ElevatorOperationServer(object):
             self.elevator_configuration[target_floor]['outside_pose']['position'],
             self.elevator_configuration[target_floor]['outside_pose']['orientation']
         )
-        rate = rospy.Rate(0.5)
+        rate = rospy.Rate(0.2)
         while not rospy.is_shutdown():
             # press button again
             self.switchbot_ros_client.control_device(
@@ -260,7 +266,14 @@ class ElevatorOperationServer(object):
             self._move_to_wait()
 
     def _move_to_wait(self, timeout=rospy.Duration(0)):
-        self.move_base_client.wait_for_result(timeout=timeout)
+        ret = self.move_base_client.wait_for_result(timeout=timeout)
+        rospy.logwarn('ret: {}'.format(ret))
+        return ret
+
+    def _move_to_result(self):
+        ret = self.move_base_client.get_result()
+        rospy.logwarn('ret: {}'.format(ret))
+        return ret
 
     def _reset_initial_altitude(self, floor):
         self.initial_elevator_floor = floor
@@ -283,7 +296,7 @@ class ElevatorOperationServer(object):
             {
                 'floor': key,
                 'altitude_diff':
-                (entry['altitude'] - self.initial_altitude) -
+                (entry['altitude'] - self.elevator_configuration[self.initial_elevator_floor]['altitude']) -
                 (msg.altitude - self.initial_altitude)
             }
             for key, entry in self.elevator_configuration.items()]
