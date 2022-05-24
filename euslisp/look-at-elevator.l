@@ -23,7 +23,7 @@
             )
         (let* ((target-x (elt (send coords-base-to-target :pos) 0))
                (target-y (elt (send coords-base-to-target :pos) 1)))
-          (send *ri* :go-pos-unsafe 0 0 (rad2deg (atan target-y target-x)))
+          (send *ri* :go-pos-unsafe-wait 0 0 (rad2deg (atan target-y target-x)))
           (send *fetch* :angle-vector (send *ri* :state :potentio-vector))
           (setq coords-base-to-target (send *tfl* :lookup-transform "base_link" target-frame-id (ros::time)))
           (if (not coords-base-to-target)

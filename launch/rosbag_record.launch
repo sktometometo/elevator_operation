@@ -6,12 +6,13 @@
         pkg="rosbag"
         type="record"
         name="elevator_operation_rosbag_record"
-        args="-O $(arg ROSBAG_FILE) \
-        /elevator_door_opening_checker/output \
-        /spinal/imu \
-        /spinal/baro \
-        /lowpass_filter/output \
-        /change_floor_server/input \
+        output="screen"
+        args="-O $(arg ROSBAG_FILE)
+        /elevator_door_opening_checker/output
+        /spinal/imu
+        /spinal/baro
+        /lowpass_filter/output
+        /change_floor_server/input
         "
         />
 </launch>

@@ -224,7 +224,7 @@ class ElevatorOperationServer(object):
         rate = rospy.Rate(1)
         while not rospy.is_shutdown():
             rate.sleep()
-            rospy.loginfo('waiting')
+            rospy.loginfo('waiting: door_is_open: {}'.format(self.door_is_open))
             if self.door_is_open:
                 break
 
@@ -331,7 +331,7 @@ class ElevatorOperationServer(object):
 
     def _callback_door_points(self, msg):
 
-        rospy.logdebug('door points: {}'.format(msg.data))
+        rospy.loginfo('door points: {}'.format(msg.data))
         if msg.data < self.threshold_door_points:
             self.door_is_open = True
         else:
