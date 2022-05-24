@@ -1,0 +1,17 @@
+<launch>
+    <arg name="ROSBAG_FILE" />
+    <arg name="input_topic_points" default="/head_camera/depth_registered/points" />
+
+    <node
+        pkg="rosbag"
+        type="record"
+        name="elevator_operation_rosbag_record"
+        args="-O $(arg ROSBAG_FILE) \
+        /elevator_door_opening_checker/output \
+        /spinal/imu \
+        /spinal/baro \
+        /lowpass_filter/output \
+        /change_floor_server/input \
+        "
+        />
+</launch>
