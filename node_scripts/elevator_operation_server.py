@@ -6,6 +6,8 @@ import actionlib
 import rospy
 from switchbot_ros.switchbot_ros_client import SwitchBotROSClient
 
+import dynamic_reconfigure.client
+
 from spinal.msg import Barometer
 from std_msgs.msg import Bool
 from std_msgs.msg import Int16
@@ -24,6 +26,18 @@ from elevator_operation.msg import MoveElevatorResult
 class ElevatorOperationServer(object):
 
     def __init__(self):
+
+        #######################################################################
+        # Dynamic Reconfigure Client
+        #######################################################################
+        self.client_global_inflater = dynamic_reconfigure.client.Client("/move_base/global_costmap/inflater")
+        self.client_local_inflater = dynamic_reconfigure.client.Client("/move_base/local_costmap/inflater")
+
+        #######################################################################
+        # Inflation Radius
+        #######################################################################
+        self.default_global_inflation_radius = self.get_global_inflation_radius()
+        self.default_local_inflation_radius = self.get_local_inflation_radius()
 
         #######################################################################
         # Elevator Operation State
@@ -132,6 +146,34 @@ class ElevatorOperationServer(object):
 
         rospy.loginfo('initialized')
 
+    def get_global_inflation_radius(self):
+
+        cfg = self.client_global_inflater.get_configuration()
+        return cfg['inflation_radius']
+
+    def get_local_inflation_radius(self):
+
+        cfg = self.client_local_inflater.get_configuration()
+        return cfg['inflation_radius']
+
+    def set_global_inflation_radius(self, inflation_radius):
+
+        self.client_global_inflater.update_configuration({'inflation_radius': inflation_radius})
+
+    def set_local_inflation_radius(self, inflation_radius):
+
+        self.client_local_inflater.update_configuration({'inflation_radius': inflation_radius})
+
+    def update_default_inflation_radius(self):
+
+        self.default_global_inflation_radius = self.get_global_inflation_radius()
+        self.default_local_inflation_radius = self.get_local_inflation_radius()
+
+    def recover_default_inflation_radius(self):
+
+        self.set_global_inflation_radius(self.default_global_inflation_radius)
+        self.set_local_inflation_radius(self.default_local_inflation_radius)
+
     def execute_cb(self, goal):
         result = MoveElevatorResult()
         if goal.target_floor not in self.elevator_configuration:
@@ -152,6 +194,11 @@ class ElevatorOperationServer(object):
             wait=True
         )
         rospy.loginfo('moved to the front of elevator')
+
+        # set inflation_radius
+        self.update_default_inflation_radius()
+        self.set_global_inflation_radius(0.2)
+        self.set_local_inflation_radius(0.2)
 
         # look to the door
         self.look_at_client(self.elevator_configuration[self.current_floor]['door_frame_id'])
@@ -247,6 +294,7 @@ class ElevatorOperationServer(object):
                 break
 
         self.current_floor = target_floor
+        self.recover_default_inflation_radius()
 
         rospy.loginfo('Finished.')
 
