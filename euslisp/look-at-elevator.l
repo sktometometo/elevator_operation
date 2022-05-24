@@ -40,11 +40,10 @@
 (defun handler-start-look-at-target (req)
   (let (success
         (res (instance elevator_operation::LookAtTargetResponse :init)))
-    (setq success (look-at-target))
+    (setq success (look-at-target (send req :frame_id)))
+    (ros::ros-warn "makabe")
     (send res :success success)
-    res
-    )
-  )
+    res))
 
-(ros::advertise-service "~look_at_target" elevator_operation::LookAtTargetResponse #'handler-start-look-at-target)
+(ros::advertise-service "~look_at_target" elevator_operation::LookAtTarget #'handler-start-look-at-target)
 (ros::spin)
