@@ -44,10 +44,10 @@ class LowpassFilterNode(object):
     def callback(self, msg):
 
         self.buffer.append(msg.acc_data[2])
-        self.buffer_stamp(msg.stamp)
+        self.buffer_stamp.append(msg.stamp)
         if len(self.buffer) > self.buffer_length:
             self.buffer.pop(0)
-            self.buffer_stamp(msg.stamp)
+            self.buffer_stamp.pop(0)
             if not self.initialized:
                 # initialize filter
                 duration = 0
@@ -59,12 +59,12 @@ class LowpassFilterNode(object):
                 self.filter_b = b
                 self.initialized = True
         if self.initialized:
-            y = self.filtfilt(
+            y = signal.filtfilt(
                     self.filter_b,
                     self.filter_a,
                     self.buffer
                     )
-        self.pub.publish(Float32(data=y[-1]))
+            self.pub.publish(Float32(data=y[-1]))
 
 
 if __name__ == '__main__':

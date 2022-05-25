@@ -16,6 +16,7 @@ from std_msgs.msg import Int16
 from std_msgs.msg import Int64
 from std_msgs.msg import String
 from std_msgs.msg import Float32
+from sensor_msgs.msg import PointCloud2
 
 from elevator_operation.srv import LookAtTarget
 
@@ -190,8 +191,10 @@ class ElevatorOperationServer(object):
             return False
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, True)
         roslaunch_path = rospkg.RosPack().get_path('elevator_operation') +\
-            '/launch/elevator_detection.launch'
-        roslaunch_cli_args = [roslaunch_path]
+            '/launch/elevator_door_detector.launch'
+        roslaunch_cli_args = [roslaunch_path,
+                'input_topic_points:={}'.format(input_topic_points),
+                'elevator_door_frame_id:={}'.format(elevator_door_frame_id)]
         roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(
             roslaunch_cli_args)
         self.roslaunch_parent = roslaunch.parent.ROSLaunchParent(
@@ -199,6 +202,8 @@ class ElevatorOperationServer(object):
             roslaunch_file
         )
         self.roslaunch_parent.start()
+        rospy.wait_for_message(input_topic_points, PointCloud2)
+        rospy.sleep(10)
         return True
 
     def stop_door_detector(self):
@@ -384,7 +389,7 @@ class ElevatorOperationServer(object):
 
     def _callback_door_points(self, msg):
 
-        rospy.loginfo('door points: {}'.format(msg.data))
+        rospy.logdebug('door points: {}'.format(msg.data))
         if msg.data < self.threshold_door_points:
             self.door_is_open = True
         else:
