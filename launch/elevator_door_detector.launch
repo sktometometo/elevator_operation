@@ -16,7 +16,7 @@
     </node>
     <node pkg="jsk_pcl_ros" type="extract_indices" name="$(arg prefix)elevator_detection_door_detector_extract_indices">
         <remap from="~input" to="$(arg input_topic_points)" />
-        <remap from="~indices" to="elevator_detection_door_detector_attention_clipper/output/point_indices" />
+        <remap from="~indices" to="$(arg prefix)elevator_detection_door_detector_attention_clipper/output/point_indices" />
         <remap from="~output" to="/elevator_operation/elevator_door_points" />
     </node>
     <node pkg="elevator_operation" type="elevator_door_opening_checker.py" name="$(arg prefix)elevator_door_opening_checker">

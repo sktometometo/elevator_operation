@@ -4,6 +4,8 @@ import math
 
 import actionlib
 import rospy
+import roslaunch
+import rospkg
 from switchbot_ros.switchbot_ros_client import SwitchBotROSClient
 
 import dynamic_reconfigure.client
@@ -26,6 +28,11 @@ from elevator_operation.msg import MoveElevatorResult
 class ElevatorOperationServer(object):
 
     def __init__(self):
+
+        #######################################################################
+        # ROSLaunch
+        #######################################################################
+        self.roslaunch_parent = None
 
         #######################################################################
         # Dynamic Reconfigure Client
@@ -57,6 +64,8 @@ class ElevatorOperationServer(object):
         # variables for door opening checker
         self.door_is_open = False
         # parameters for door opening checker
+        self.input_topic_points = rospy.get_param(
+                '~input_topic_points')
         self.threshold_door_points = rospy.get_param(
             '~threshold_door_points', 10)
 
@@ -174,6 +183,31 @@ class ElevatorOperationServer(object):
         self.set_global_inflation_radius(self.default_global_inflation_radius)
         self.set_local_inflation_radius(self.default_local_inflation_radius)
 
+    def start_door_detector(self, input_topic_points, elevator_door_frame_id):
+
+        if self.roslaunch_parent is not None:
+            return False
+        uuid = roslaunch.rlutil.get_or_generate_uuid(None, True)
+        roslaunch_path = rospkg.RosPack().get_path('elevator_operation') +\
+            '/launch/elevator_detection.launch'
+        roslaunch_cli_args = [roslaunch_path]
+        roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(
+            roslaunch_cli_args)
+        self.roslaunch_parent = roslaunch.parent.ROSLaunchParent(
+            uuid,
+            roslaunch_file
+        )
+        self.roslaunch_parent.start()
+        return True
+
+    def stop_door_detector(self):
+
+        if self.roslaunch_parent is None:
+            return False
+        self.roslaunch_parent.shutdown()
+        self.roslaunch_parent = None
+        return True
+
     def execute_cb(self, goal):
         result = MoveElevatorResult()
         if goal.target_floor not in self.elevator_configuration:
@@ -203,6 +237,12 @@ class ElevatorOperationServer(object):
         # look to the door
         self.look_at_client(self.elevator_configuration[self.current_floor]['door_frame_id'])
         rospy.loginfo('look at elevator')
+
+        # start door detection
+        self.start_door_detector(
+                self.input_topic_points,
+                self.elevator_configuration[self.current_floor]['door_frame_id']
+                )
 
         # Reset altitude
         self._reset_initial_altitude(self.current_floor)
@@ -257,9 +297,18 @@ class ElevatorOperationServer(object):
             wait=True
         )
 
+        # stop door detector
+        self.stop_door_detector()
+
         # Change map
         self.pub_change_floor.publish(
             String(data=self.elevator_configuration[target_floor]['map_name']))
+
+        # start door detection
+        self.start_door_detector(
+                self.input_topic_points,
+                self.elevator_configuration[target_floor]['door_frame_id']
+                )
 
         # look to the door
         self.look_at_client(self.elevator_configuration[target_floor]['door_frame_id'])
@@ -292,6 +341,9 @@ class ElevatorOperationServer(object):
             rate.sleep()
             if self._move_to_wait(timeout=rospy.Duration(1)):
                 break
+
+        # stop door detector
+        self.stop_door_detector()
 
         self.current_floor = target_floor
         self.recover_default_inflation_radius()

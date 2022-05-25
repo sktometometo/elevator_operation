@@ -15,6 +15,7 @@
         <remap from="~look_at" to="/look_at_target_server/look_at_target" />
         <remap from="~change_floor" to="/change_floor_server/input" />
         <rosparam subst_value="true">
+            input_topic_points: $(arg input_topic_points)
             initial_floor: 7
             threshold_door_points: 10
             threshold_altitude: 1
