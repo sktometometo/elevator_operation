@@ -26,7 +26,7 @@ class LowpassFilterNode(object):
         self.pub = rospy.Publisher('~output', Float32, queue_size=1)
         self.sub = rospy.Subscriber('/spinal/imu', Imu, self.callback)
 
-    def callback_old(self, msg):
+    def callback(self, msg):
 
         if self.pre_acc_z is None or self.pre_time is None:
             self.pre_acc_z = msg.acc_data[2]
@@ -41,7 +41,7 @@ class LowpassFilterNode(object):
 
         self.pub.publish(Float32(data=self.pre_acc_z))
 
-    def callback(self, msg):
+    def callback_new(self, msg):
 
         self.buffer.append(msg.acc_data[2])
         self.buffer_stamp.append(msg.stamp)
@@ -54,7 +54,8 @@ class LowpassFilterNode(object):
                 for i in range(len(self.buffer_stamp)-1):
                     duration += (self.buffer_stamp[i+1] - self.buffer_stamp[i]).to_sec() / (len(self.buffer_stamp)-1)
                 self.fs = 1.0 / duration
-                b, a = signal.butter(self.filter_order, self.freq_cutoff, btype='lowpass', fs=self.fs)
+                rospy.loginfo('fs: {}'.format(self.fs))
+                b, a = signal.butter(self.filter_order, self.freq_cutoff / self.fs, btype='lowpass', fs=self.fs)
                 self.filter_a = a
                 self.filter_b = b
                 self.initialized = True

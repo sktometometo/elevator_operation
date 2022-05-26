@@ -16,7 +16,7 @@
         <remap from="~change_floor" to="/change_floor_server/input" />
         <rosparam subst_value="true">
             input_topic_points: $(arg input_topic_points)
-            initial_floor: 3
+            initial_floor: 7
             threshold_door_points: 10
             threshold_altitude: 1
             threshold_accel: 0.2
@@ -45,7 +45,7 @@
     <!-- LPF for accel -->
     <node pkg="elevator_operation" type="lowpass_filter.py" name="lowpass_filter">
         <rosparam subst_value="true">
-            freq_cutoff: 1.0
+            freq_cutoff: 0.5
         </rosparam>
     </node>
 
