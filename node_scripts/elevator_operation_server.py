@@ -229,8 +229,7 @@ class ElevatorOperationServer(object):
 
         # move robot to the front of elevator
         self._move_to(
-            self.elevator_configuration[self.current_floor]['outside_pose']['position'],
-            self.elevator_configuration[self.current_floor]['outside_pose']['orientation'],
+            self.elevator_configuration[self.current_floor]['outside_pose'],
             wait=True
         )
         rospy.loginfo('moved to the front of elevator')
@@ -276,8 +275,7 @@ class ElevatorOperationServer(object):
 
         # Ride on when arrive
         self._move_to(
-            self.elevator_configuration[self.current_floor]['inside_pose']['position'],
-            self.elevator_configuration[self.current_floor]['inside_pose']['orientation']
+            self.elevator_configuration[self.current_floor]['inside_pose'],
         )
         rate = rospy.Rate(0.2)
         while not rospy.is_shutdown():
@@ -333,8 +331,7 @@ class ElevatorOperationServer(object):
 
         # Get off when arrive
         self._move_to(
-            self.elevator_configuration[target_floor]['outside_pose']['position'],
-            self.elevator_configuration[target_floor]['outside_pose']['orientation']
+            self.elevator_configuration[target_floor]['outside_pose'],
         )
         rate = rospy.Rate(0.2)
         while not rospy.is_shutdown():
@@ -356,7 +353,11 @@ class ElevatorOperationServer(object):
 
         rospy.loginfo('Finished.')
 
-    def _move_to(self, position, orientation, frame_id='map', wait=False):
+    def _move_to(self, target_pose, wait=False):
+
+        frame_id = target_pose['frame_id']
+        position = target_pose['position']
+        orientation = target_pose['orientation']
 
         goal = MoveBaseGoal()
         goal.target_pose.header.stamp = rospy.Time.now()
