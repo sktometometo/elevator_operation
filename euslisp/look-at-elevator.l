@@ -1,17 +1,18 @@
 #!/usr/bin/env roseus
 
 (ros::roseus-add-srvs "elevator_operation")
+(ros::roseus-add-msgs "move_base_msgs")
 
 (ros::roseus "look_at_elevator_server")
 (setq *robot-type* (ros::get-param "~robot_type"))
 
 (cond
-  ((eq *robot-type* "fetch")
+  ((equal *robot-type* "fetch")
     (load "package://fetcheus/fetch-interface.l")
     (load "package://jsk_fetch_startup/euslisp/navigation-utils.l")
     (fetch-init)
     (setq *robot* *fetch*))
-  ((eq *robot-type* "magni")
+  ((equal *robot-type* "magni")
     (setq *move-base-action-client* (instance ros::simple-action-client :init "/move_base" move_base_msgs::MoveBaseAction))
     (send *move-base-action-client* :wait-for-server)
     )
@@ -21,12 +22,12 @@
 (setq *tfl* (instance ros::transform-listener :init))
 
 (defun update-model ()
-  (if (eq *robot-type "fetch")
+  (if (equal *robot-type "fetch")
     (send *robot* :angle-vector (send *ri* :state :potentio-vector)))
   )
 
 (defun look-at-target-with-head (coords-base-to-target)
-  (if (eq *robot-type "fetch")
+  (if (equal *robot-type "fetch")
     (progn
       (send *robot* :look-at-target coords-base-to-target)
       (send *ri* :angle-vector-raw (send *robot* :angle-vector) 500)))
@@ -34,9 +35,9 @@
 
 (defun rotate-base (theta)
   (cond
-    ((eq *robot-type* "fetch")
+    ((equal *robot-type* "fetch")
       (send *ri* :go-pos-unsafe-wait 0 0 (rad2deg theta)))
-    ((eq *robot-type* "magni")
+    ((equal *robot-type* "magni")
       (let ((goal (instance move_base_msgs::MoveBaseGoal :init)))
         (send goal :target_pose :header :frame_id "base_link")
         (send goal :target_pose :pose :orientation :z (sin (/ theta 2)))
