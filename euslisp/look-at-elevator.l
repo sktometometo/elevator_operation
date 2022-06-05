@@ -22,18 +22,19 @@
 (setq *tfl* (instance ros::transform-listener :init))
 
 (defun update-model ()
-  (if (equal *robot-type "fetch")
+  (if (equal *robot-type* "fetch")
     (send *robot* :angle-vector (send *ri* :state :potentio-vector)))
   )
 
 (defun look-at-target-with-head (coords-base-to-target)
-  (if (equal *robot-type "fetch")
+  (if (equal *robot-type* "fetch")
     (progn
       (send *robot* :look-at-target coords-base-to-target)
       (send *ri* :angle-vector-raw (send *robot* :angle-vector) 500)))
   )
 
 (defun rotate-base (theta)
+  (ros::ros-warn "rotating base ~A radians" theta)
   (cond
     ((equal *robot-type* "fetch")
       (send *ri* :go-pos-unsafe-wait 0 0 (rad2deg theta)))
@@ -50,6 +51,7 @@
     ))
 
 (defun look-at-target-frame (target-frame-id)
+  (ros::ros-warn "target-frame-id: ~A" target-frame-id)
   (let (coords-base-to-target)
     (update-model)
     (setq coords-base-to-target (send *tfl* :lookup-transform "base_link" target-frame-id (ros::time)))
@@ -59,13 +61,13 @@
       )
     (let* ((target-x (elt (send coords-base-to-target :pos) 0))
            (target-y (elt (send coords-base-to-target :pos) 1)))
-      (rotate-base (rad2deg (atan target-y target-x)))
+      (rotate-base (atan target-y target-x))
       (update-model)
       (setq coords-base-to-target (send *tfl* :lookup-transform "base_link" target-frame-id (ros::time)))
       (if (not coords-base-to-target)
         (return-from look-at-target nil)
         )
-      (look-at-target-frame coords-base-to-target)
+      (look-at-target-with-head coords-base-to-target)
       )
     t))
 

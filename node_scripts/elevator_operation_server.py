@@ -39,14 +39,17 @@ class ElevatorOperationServer(object):
         #######################################################################
         # Dynamic Reconfigure Client
         #######################################################################
-        self.client_global_inflater = dynamic_reconfigure.client.Client("/move_base/global_costmap/inflater")
-        self.client_local_inflater = dynamic_reconfigure.client.Client("/move_base/local_costmap/inflater")
+        self.use_dynamic_reconfigure = rospy.get_param('~use_dynamic_reconfigure', True)
+        if self.use_dynamic_reconfigure:
+            self.client_global_inflater = dynamic_reconfigure.client.Client("/move_base/global_costmap/inflater")
+            self.client_local_inflater = dynamic_reconfigure.client.Client("/move_base/local_costmap/inflater")
 
         #######################################################################
         # Inflation Radius
         #######################################################################
-        self.default_global_inflation_radius = self.get_global_inflation_radius()
-        self.default_local_inflation_radius = self.get_local_inflation_radius()
+        if self.use_dynamic_reconfigure:
+            self.default_global_inflation_radius = self.get_global_inflation_radius()
+            self.default_local_inflation_radius = self.get_local_inflation_radius()
 
         #######################################################################
         # Elevator Operation State
@@ -235,9 +238,10 @@ class ElevatorOperationServer(object):
         rospy.loginfo('moved to the front of elevator')
 
         # set inflation_radius
-        self.update_default_inflation_radius()
-        self.set_global_inflation_radius(0.2)
-        self.set_local_inflation_radius(0.2)
+        if self.use_dynamic_reconfigure:
+            self.update_default_inflation_radius()
+            self.set_global_inflation_radius(0.2)
+            self.set_local_inflation_radius(0.2)
 
         # look to the door
         self.look_at_client(self.elevator_configuration[self.current_floor]['door_frame_id'])
@@ -349,7 +353,8 @@ class ElevatorOperationServer(object):
         self.stop_door_detector()
 
         self.current_floor = target_floor
-        self.recover_default_inflation_radius()
+        if self.use_dynamic_reconfigure:
+            self.recover_default_inflation_radius()
 
         rospy.loginfo('Finished.')
 
