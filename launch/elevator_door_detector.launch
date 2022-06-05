@@ -1,6 +1,6 @@
 <launch>
-    <arg name="input_topic_points" default="/head_camera/depth_registered/points" />
-    <arg name="elevator_door_frame_id" default="/eng2/7f/elevator_door" />
+    <arg name="input_topic_points"/>
+    <arg name="elevator_door_frame_id"/>
     <arg name="prefix" default=""/>
 
     <node pkg="nodelet" type="nodelet" name="$(arg prefix)elevator_detection_door_detector_attention_clipper" args="standalone jsk_pcl/AttentionClipper">

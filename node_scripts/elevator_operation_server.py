@@ -195,14 +195,16 @@ class ElevatorOperationServer(object):
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, True)
         roslaunch_path = rospkg.RosPack().get_path('elevator_operation') +\
             '/launch/elevator_door_detector.launch'
-        roslaunch_cli_args = [roslaunch_path,
+        cli_args = [roslaunch_path,
                 'input_topic_points:={}'.format(input_topic_points),
                 'elevator_door_frame_id:={}'.format(elevator_door_frame_id)]
-        roslaunch_file = roslaunch.rlutil.resolve_launch_arguments(
-            roslaunch_cli_args)
+        roslaunch_file = [(
+                roslaunch.rlutil.resolve_launch_arguments(cli_args)[0],
+                cli_args[1:]
+                )]
+        rospy.logwarn('roslaunch_file: {}'.format(roslaunch_file))
         self.roslaunch_parent = roslaunch.parent.ROSLaunchParent(
-            uuid,
-            roslaunch_file
+            uuid, roslaunch_file
         )
         self.roslaunch_parent.start()
         rospy.wait_for_message(input_topic_points, PointCloud2)
