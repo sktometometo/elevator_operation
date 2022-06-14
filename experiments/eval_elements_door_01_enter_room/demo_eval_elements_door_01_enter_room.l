@@ -18,6 +18,19 @@
 
   (setq *door-frame-id* (ros::get-param "~door_frame_id" ))
   (setq *pose-inside-room* (ros::get-param "~pose_inside_room"))
+  (setq *pose-outside-room* (ros::get-param "~pose_outside_room"))
+
+  (send-move-base-goal
+    (elt *pose-outside-room* 0)
+    (elt *pose-outside-room* 1)
+    (elt *pose-outside-room* 2)
+    (elt *pose-outside-room* 3)
+    (elt *pose-outside-room* 4)
+    (elt *pose-outside-room* 5)
+    (elt *pose-outside-room* 6)
+    (elt *pose-outside-room* 7)
+    :wait t
+    )
 
   (call-look-at-target "~look_at" *door-frame-id*)
 
