@@ -1,6 +1,5 @@
 <launch>
     <arg name="ROSBAG_FILE" />
-    <arg name="input_topic_points" default="/head_camera/depth_registered/points" />
 
     <node
         pkg="rosbag"
@@ -8,7 +7,7 @@
         name="elevator_operation_rosbag_record"
         output="screen"
         args="-O $(arg ROSBAG_FILE)
-        $(arg input_topic_points)
+        /head_camera/depth_registered/points
         /elevator_operation/elevator_door_points
         /elevator_door_opening_checker/output
         /spinal/imu
