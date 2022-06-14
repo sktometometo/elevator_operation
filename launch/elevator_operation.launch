@@ -92,12 +92,32 @@
 
     <!-- elevator_frame -->
     <group unless="$(arg local_mode)">
-        <node pkg="tf" type="static_transform_publisher" name="elevator_7f_frame_publisher" args="2 -32.5 1 0 0 0 eng2/7f eng2/7f/elevator_door 50" />
-        <node pkg="tf" type="static_transform_publisher" name="elevator_3f_frame_publisher" args="2 -32.5 1 0 0 0 eng2/3f eng2/3f/elevator_door 50" />
-        <node pkg="tf" type="static_transform_publisher" name="73b2_frame_publisher" args="0 -0.7 1 0 0 0 eng2/7f/73b2 eng2/7f/73b2/door 50" />
+        <node
+            pkg="tf2_ros"
+            type="static_transform_publisher"
+            name="elevator_7f_frame_publisher"
+            args="2 -32.5 1 0 0 0 eng2/7f eng2/7f/elevator_door"
+            />
+        <node
+            pkg="tf2_ros"
+            type="static_transform_publisher"
+            name="elevator_3f_frame_publisher"
+            args="2 -32.5 1 0 0 0 eng2/3f eng2/3f/elevator_door"
+            />
+        <node
+            pkg="tf2_ros"
+            type="static_transform_publisher"
+            name="73b2_frame_publisher"
+            args="0 -0.7 1 0 0 0 eng2/7f/73b2 eng2/7f/73b2/door"
+            />
     </group>
     <group if="$(arg local_mode)">
-        <node pkg="tf" type="static_transform_publisher" name="offset_base_link_publisher" args="0 0 0.3 0 0 0 /base_link /base_link_offset 50" />
+        <node
+            pkg="tf2_ros"
+            type="static_transform_publisher"
+            name="offset_base_link_publisher"
+            args="0 0 0.3 0 0 0 base_link base_link_offset"
+            />
         <node pkg="elevator_operation" type="store_base_frame.py" name="store_elevator_frame">
             <rosparam subst_value="true">
                 fixed_frame_id: odom
