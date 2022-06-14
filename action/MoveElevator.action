@@ -1,4 +1,4 @@
-int32 target_floor
+string target_floor_name
 ---
 bool success
 ---

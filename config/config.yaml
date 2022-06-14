@@ -1,4 +1,5 @@
 - floor: 7
+  floor_name: 'eng2/7f'
   altitude: 4
   map_name: 'eng2/7f'
   door_frame_id: '/eng2/7f/elevator_door'
@@ -13,6 +14,7 @@
   buttons:
     down: '/eng2/7f/elevator_bot_down'
 - floor: 3
+  floor_name: 'eng2/3f'
   altitude: -15
   map_name: 'eng2/3f'
   door_frame_id: '/eng2/3f/elevator_door'
