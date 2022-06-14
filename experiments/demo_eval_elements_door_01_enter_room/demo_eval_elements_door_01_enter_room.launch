@@ -1,19 +1,5 @@
 <launch>
 
-    <include
-        file="$(find elevator_operation)/launch/elevator_operation.launch"
-        >
-        <arg name="robot_type" value="fetch"/>
-    </include>
-
-    <include
-        file="$(find elevator_operation)/launch/elevator_door_detector.launch"
-        >
-        <arg name="input_topic_points" value="/head_camera/depth_registered/points"/>
-        <arg name="elevator_door_frame_id" value="eng2/7f/73b2/door"/>
-        <arg name="prefix" value=""/>
-    </include>
-
     <node
         pkg="elevator_operation"
         type="demo_eval_elements_door_01_enter_room.l"
@@ -22,7 +8,7 @@
         >
         <remap from="~look_at" to="/look_at_target_server/look_at_target" />
         <rosparam subst_value="true">
-            door_frame_id: eng2/7f/73b2/door
+            door_frame_id: eng2/7f/73B2/door
             pose_inside_room: [2.0, 6.2, 0, 0, 0, 0, 1, "eng2/7f"]
             pose_outside_room: [-1.0, 6.2, 0, 0, 0, 0, 1, "eng2/7f"]
         </rosparam>

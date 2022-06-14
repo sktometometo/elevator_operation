@@ -14,7 +14,7 @@
 
 (defun main()
   (fetch-init)
-  (ros::subscribe "~door_is_open" std_msgs::Bool callback-door-is-open)
+  (ros::subscribe "~door_is_open" std_msgs::Bool #'callback-door-is-open)
 
   (setq *door-frame-id* (ros::get-param "~door_frame_id" ))
   (setq *pose-inside-room* (ros::get-param "~pose_inside_room"))
@@ -57,3 +57,5 @@
 
   (ros::ros-info "Finished.")
   )
+
+(main)

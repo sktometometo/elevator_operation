@@ -107,8 +107,8 @@
         <node
             pkg="tf2_ros"
             type="static_transform_publisher"
-            name="73b2_frame_publisher"
-            args="0 -0.7 1 0 0 0 eng2/7f/73b2 eng2/7f/73b2/door"
+            name="static_73b2_frame_publisher"
+            args="0 -0.7 1 0 0 0 eng2/7f/73B2 eng2/7f/73B2/door"
             />
     </group>
     <group if="$(arg local_mode)">

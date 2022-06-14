@@ -28,9 +28,12 @@
       (send *move-base-action-client* :wait-for-server)
       )
     (t
-      (ros::ros-error "Unsupported robot type: ~A" *robot-type*))
+      (ros::ros-error "Unsupported robot type: ~A" *robot-type*)
+      (exit 1))
     )
   (setq *tfl* (instance ros::transform-listener :init))
   (ros::advertise-service "~look_at_target" elevator_operation::LookAtTarget #'handler-start-look-at-target)
   (ros::spin)
   )
+
+(main)
