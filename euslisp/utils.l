@@ -32,6 +32,7 @@
         (send *move-base-action-client* :wait-for-result)
         (setq result (send *move-base-action-client* :get-result))
         )))
+  )
 
 (defun rotate-base (theta &key (robot-type "fetch"))
   (ros::ros-warn "rotating base ~A radians" theta)
