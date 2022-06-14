@@ -8,6 +8,12 @@
         output="screen"
         args="-O $(arg ROSBAG_FILE)
         /head_camera/depth_registered/points
+        /rosout
+        /tf
+        /tf_static
+        /map
+        /odom
+        /odom_combined
         /elevator_operation/elevator_door_points
         /elevator_door_opening_checker/output
         /spinal/imu
