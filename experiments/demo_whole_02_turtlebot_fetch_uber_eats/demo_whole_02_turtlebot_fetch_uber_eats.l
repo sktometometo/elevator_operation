@@ -26,6 +26,7 @@
 
 (defun main ()
   (ros::roseus "demo_whole_02_turtlebot_fetch_uber_eats")
+  (dxl-armed-turtlebot-init)
   (ros::subscribe "/pressed" std_msgs::Bool #'callback-button-pressed)
 
   (setq *floor-initial* (ros::get-param "~floor_initial" "eng2/7f"))
@@ -34,22 +35,25 @@
   (setq *pose-pickup* (ros::get-param "~pose_pickup"))
 
   (ros::ros-info "moving to initial pose")
-  (send-move-base-goal
-    (elt *pose-initial* 0)
-    (elt *pose-initial* 1)
-    (elt *pose-initial* 2)
-    (elt *pose-initial* 3)
-    (elt *pose-initial* 4)
-    (elt *pose-initial* 5)
-    (elt *pose-initial* 6)
-    (elt *pose-initial* 7)
-    :wait t
-    )
+  ;(send-move-base-goal
+  ;  (elt *pose-initial* 0)
+  ;  (elt *pose-initial* 1)
+  ;  (elt *pose-initial* 2)
+  ;  (elt *pose-initial* 3)
+  ;  (elt *pose-initial* 4)
+  ;  (elt *pose-initial* 5)
+  ;  (elt *pose-initial* 6)
+  ;  (elt *pose-initial* 7)
+  ;  :wait t
+  ;  )
 
   (wait-until-button-pressed)
   (send *ri* :speak-jp "食べ物を取りに行ってきます")
 
+  (ros::ros-info "moving to floor-pickup ~A" *floor-pickup*)
   (move-elevator *floor-pickup*)
+
+  (ros::ros-info "moving to pickup pose" *pose-pickup*)
   (send-move-base-goal
     (elt *pose-pickup* 0)
     (elt *pose-pickup* 1)
@@ -65,7 +69,9 @@
   (send *ri* :speak-jp "食べ物をかごにいれてボタンを押して下さい")
   (wait-until-button-pressed)
 
+  (ros::ros-info "moving to floor-initial ~A" *floor-initial*)
   (move-elevator *floor-initial*)
+
   (send-move-base-goal
     (elt *pose-initial* 0)
     (elt *pose-initial* 1)
