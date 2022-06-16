@@ -9,7 +9,7 @@
 (defun handler-start-look-at-target (req)
   (let (success
         (res (instance elevator_operation::LookAtTargetResponse :init)))
-    (setq success (look-at-target-frame (send req :frame_id) :robot-type *robot-tyoe*))
+    (setq success (look-at-target-frame (send req :frame_id) :robot-type *robot-type*))
     (ros::ros-warn "makabe")
     (send res :success success)
     res))

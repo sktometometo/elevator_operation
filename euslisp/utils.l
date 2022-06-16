@@ -38,7 +38,7 @@
   (ros::ros-warn "rotating base ~A radians" theta)
   (cond
     ((equal robot-type "fetch")
-      (send *ri* :go-pos-unsafe-wait 0 0 (rad2deg theta)))
+      (send *ri* :go-pos 0 0 (rad2deg theta)))
     ((equal robot-type "magni")
       (send-move-base-goal 0 0 0 0 0 (sin (/ theta 2)) (cos (/ theta 2)) "base_link" :wait t))
     (t
@@ -66,7 +66,8 @@
     t))
 
 (defun call-look-at-target (topic-name frame-id)
-  (let ((req (instance elevator_operation::LookAtTargetRequest :init)))
+  (let (res (req (instance elevator_operation::LookAtTargetRequest :init)))
     (send req :frame_id frame-id)
-    (ros::service-call topic-name req t)
+    (setq res (ros::service-call topic-name req t))
+    (send res :success)
     ))
