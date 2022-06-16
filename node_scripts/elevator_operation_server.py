@@ -289,11 +289,11 @@ class ElevatorOperationServer(object):
         )
         ## Call elevator from target floor
         if target_floor < self.current_floor:
-            button_type = 'up'
+            target_floor_button_type = 'up'
         else:
-            button_type = 'down'
+            target_floor_button_type = 'down'
         self.switchbot_ros_client.control_device(
-            self.elevator_configuration[target_floor]['buttons'][button_type],
+            self.elevator_configuration[target_floor]['buttons'][target_floor_button_type],
             'press',
             wait=True
         )
@@ -347,7 +347,7 @@ class ElevatorOperationServer(object):
         while not rospy.is_shutdown():
             # press button again
             self.switchbot_ros_client.control_device(
-                self.elevator_configuration[target_floor]['buttons'][button_type],
+                self.elevator_configuration[target_floor]['buttons'][target_button_type],
                 'press',
                 wait=True
             )
