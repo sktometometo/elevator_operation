@@ -222,7 +222,7 @@ class ElevatorOperationServer(object):
     def execute_cb(self, goal):
         result = MoveElevatorResult()
         if goal.target_floor_name not in [ v['floor_name'] for k, v in self.elevator_configuration.items()]:
-            rospy.logerr('target_floor: {} not in elevator_configuration'.format(goal.target_floor))
+            rospy.logerr('target_floor: {} not in elevator_configuration'.format(goal.target_floor_name))
             result.success = False
             self.action_server.set_aborted(result)
         else:

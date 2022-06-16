@@ -1,5 +1,6 @@
 (ros::roseus-add-msgs "move_base_msgs")
 (ros::roseus-add-srvs "elevator_operation")
+(ros::load-ros-manifest "elevator_operation")
 
 (defun update-model (&key (robot-type "fetch"))
   (if (equal robot-type "fetch")
@@ -66,11 +67,14 @@
     t))
 
 (defun move-elevator (target-floor-name)
-  (if (not (boundp *move-elevator-action-client*))
+  (if (not (boundp `*move-elevator-action-client*))
     (progn
-        (setq *move-elevator-action-client* (instance ros::simple-action-client :init "/move_elevator" move_elevator::MoveElevatorAction))
+        (setq *move-elevator-action-client*
+              (instance ros::simple-action-client :init
+                        "/elevator_operation_server/move_elevator"
+                        elevator_operation::moveelevatoraction))
         (send *move-elevator-action-client* :wait-for-server)))
-  (let (result (goal (instance move_elevator::MoveElevatorGoal :init)))
+  (let (result (goal (instance elevator_operation::MoveElevatorGoal :init)))
     (send goal :target_floor_name target-floor-name)
     (send *move-elevator-action-client* :send-goal goal)
     (send *move-elevator-action-client* :wait-for-result)
