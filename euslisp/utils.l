@@ -1,4 +1,5 @@
 (ros::roseus-add-msgs "move_base_msgs")
+(ros::load-ros-manifest "move_base_msgs")
 (ros::roseus-add-srvs "elevator_operation")
 (ros::load-ros-manifest "elevator_operation")
 
@@ -14,11 +15,14 @@
       (send *ri* :angle-vector-raw (send *robot* :angle-vector) 500)))
   )
 
-(defun send-move-base-goal (x y z qx qy qz qw frame-id &key (wait t))
+(defun send-move-base-goal (x y z qx qy qz qw frame-id &key (wait t) (timeout 60))
   (if (not (boundp `*move-base-action-client*))
     (setq *move-base-action-client* (instance ros::simple-action-client :init "/move_base" move_base_msgs::MoveBaseAction))
+    (send *move-base-action-client* :wait-for-server)
     )
   (let (result (goal (instance move_base_msgs::MoveBaseGoal :init)))
+    (ros::ros-warn "got a goal x: ~A, y: ~A, z: ~A, qx: ~A, qy: ~A, qz: ~A, qw: ~A on frame ~A"
+                   x y z qx qy qz qw frame-id)
     (send goal :target_pose :header :frame_id frame-id)
     (send goal :target_pose :pose :position :x x)
     (send goal :target_pose :pose :position :y y)
@@ -28,9 +32,11 @@
     (send goal :target_pose :pose :orientation :z qz)
     (send goal :target_pose :pose :orientation :w qw)
     (send *move-base-action-client* :send-goal goal)
+    (ros::ros-warn "send a goal")
     (if wait
       (progn
-        (send *move-base-action-client* :wait-for-result)
+        (ros::ros-warn "waiting for a result of a goal")
+        (send *move-base-action-client* :wait-for-result :timeout timeout)
         (setq result (send *move-base-action-client* :get-result))
         )))
   )
