@@ -1,0 +1,27 @@
+<launch>
+    <arg name="device_spinal"/>
+    <arg name="device_button"/>
+
+    <arg name="switchbot_token_yaml" default="/home/sktometometo/switchbot.yaml"/>
+
+    <include
+        file="$(find elevator_operation)/launch/elevator_operation.launch"
+        >
+        <arg name="device_spinal" value="$(arg device_spinal)"/>
+        <arg name="robot_type" value="magni"/>
+        <arg name="launch_switchbot_client" value="true"/>
+        <arg name="switchbot_token_yaml" value="$(arg switchbot_token_yaml)"/>
+        <arg name="input_topic_points" value="/camera/depth_registered/points"/>
+        <arg name="use_dynamic_reconfigure" value="false"/>
+    </include>
+
+    <node
+        pkg="rosserial_python"
+        type="serial_node.py"
+        name="button"
+        >
+        <rosparam subst_value="true">
+            port: $(arg device_button)
+        </rosparam>
+    </node>
+</launch>

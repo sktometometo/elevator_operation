@@ -7,6 +7,7 @@
         name="elevator_operation_rosbag_record"
         output="screen"
         args="-O $(arg ROSBAG_FILE)
+        /camera/depth_registered/points
         /head_camera/depth_registered/points
         /rosout
         /tf
