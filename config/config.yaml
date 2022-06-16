@@ -30,7 +30,7 @@
     up: '/eng2/3f/elevator_bot_up'
 - floor: 1
   floor_name: 'eng2/1f'
-  altitude: -20
+  altitude: -24
   map_name: 'eng2/1f'
   door_frame_id: '/eng2/1f/elevator_door'
   outside_pose:
