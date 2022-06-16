@@ -8,6 +8,8 @@
     <arg name="launch_switchbot_client" default="false" />
     <arg name="switchbot_token_yaml" default="/var/lib/robot/credentials/switchbot_token.yaml" />
 
+    <arg name="initial_floor" default="7" />
+
     <arg name="robot_type" default="fetch" />
     <arg name="local_mode" default="false" />
 
@@ -21,7 +23,7 @@
         <rosparam subst_value="true">
             use_dynamic_reconfigure: $(arg use_dynamic_reconfigure)
             input_topic_points: $(arg input_topic_points)
-            initial_floor: 7
+            initial_floor: $(arg initial_floor)
             threshold_door_points: 10
             threshold_altitude: 1
             threshold_accel: 0.2

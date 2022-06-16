@@ -4,9 +4,12 @@
 
     <arg name="switchbot_token_yaml" default="/home/sktometometo/switchbot.yaml"/>
 
+    <arg name="initial_floor" default="7" />
+
     <include
         file="$(find elevator_operation)/launch/elevator_operation.launch"
         >
+        <arg name="initial_floor" value="$(arg initial_floor)"/>
         <arg name="device_spinal" value="$(arg device_spinal)"/>
         <arg name="robot_type" value="magni"/>
         <arg name="launch_switchbot_client" value="true"/>
