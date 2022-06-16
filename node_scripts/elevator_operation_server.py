@@ -287,6 +287,17 @@ class ElevatorOperationServer(object):
         self._move_to(
             self.elevator_configuration[self.current_floor]['inside_pose'],
         )
+        ## Call elevator from target floor
+        if target_floor < self.current_floor:
+            button_type = 'up'
+        else:
+            button_type = 'down'
+        self.switchbot_ros_client.control_device(
+            self.elevator_configuration[target_floor]['buttons'][button_type],
+            'press',
+            wait=True
+        )
+        ## press current floor button until riding on
         rate = rospy.Rate(0.2)
         while not rospy.is_shutdown():
             # press button again
@@ -299,17 +310,6 @@ class ElevatorOperationServer(object):
             if self._move_to_wait(timeout=rospy.Duration(1)):
                 break
         ret = self._move_to_result()
-
-        # Call elevator from target floor
-        if target_floor < self.current_floor:
-            button_type = 'up'
-        else:
-            button_type = 'down'
-        self.switchbot_ros_client.control_device(
-            self.elevator_configuration[target_floor]['buttons'][button_type],
-            'press',
-            wait=True
-        )
 
         # stop door detector
         self.stop_door_detector()
