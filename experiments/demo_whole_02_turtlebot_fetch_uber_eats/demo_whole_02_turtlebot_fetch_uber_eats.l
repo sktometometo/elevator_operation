@@ -27,9 +27,9 @@
   (dxl-armed-turtlebot-init)
   (ros::subscribe "/pressed" std_msgs::Bool #'callback-button-pressed)
 
-  (setq *floor-initial* (ros::get-param "~floor_initial"))
+  (setq *floor-initial* (ros::get-param "~floor_initial" "eng2/7f"))
   (setq *pose-initial* (ros::get-param "~pose_initial"))
-  (setq *floor-pickup* (ros::get-param "~floor_pickup"))
+  (setq *floor-pickup* (ros::get-param "~floor_pickup" "eng2/1f"))
   (setq *pose-pickup* (ros::get-param "~pose_pickup"))
 
   (send-move-base-goal
