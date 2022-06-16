@@ -1,78 +1,80 @@
 #!/usr/bin/env roseus
 
-(ros::roseus-add-msgs "move_base_msgs")
 (ros::roseus-add-msgs "elevator_operation")
-(ros::roseus-add-msgs "geometry_msgs")
+(ros::roseus-add-msgs "std_msgs")
 
 (load "package://dxl_armed_turtlebot/euslisp/dxl-armed-turtlebot-interface.l")
+(load "package://elevator_operation/euslisp/utils.l")
 
-(dxl-armed-turtlebot-init)
 
-(setq *move-base-action-client* (instance ros::simple-action-client :init "/move_base" move_base_msgs::MoveBaseAction))
-(send *move-base-action-client* :wait-for-server)
-
-(setq *move-elevator-action-client* (instance ros::simple-action-client :init "/move_elevator" move_elevator::MoveElevatorAction))
-(send *move-elevator-action-client* :wait-for-server)
-
-(defun move-to (x y &optional (theta_deg 0) &key (frame-id "base_link") (wait t))
-  (let ((theta (deg2rad theta_deg))
-        (goal (instance move_base_msgs::MoveBaseGoal :init)))
-    (send goal :target_pose :header :frame_id frame-id)
-    (send goal :target_pose :pose :position :x x)
-    (send goal :target_pose :pose :position :y y)
-    (send goal :target_pose :pose :position :z 0)
-    (send goal :target_pose :pose :orientation :x 0)
-    (send goal :target_pose :pose :orientation :y 0)
-    (send goal :target_pose :pose :orientation :z (sin (/ theta 2)))
-    (send goal :target_pose :pose :orientation :w (cos (/ theta 2)))
-    (send *move-base-action-client* :send-goal goal)
-    (if wait
-        (send *move-base-action-client* :wait-for-result)
-        )
-    ))
-
-(defun move-elevator (target-floor-name)
-  (let (result (goal (instance move_elevator::MoveElevatorGoal :init)))
-    (send goal :target_floor target-floor)
-    (send *move-elevator-action-client* :send-goal goal)
-    (send *move-elevator-action-client* :wait-for-result)
-    (setq result (send *move-elevator-action-client* :get-result))
-    (send result :success)))
-
-(defun get-current-floor ()
+(setq *button-pressed* nil)
+(defun callback-button-pressed (msg)
+  (setq *button-pressed* (send msg :data))
   )
 
 (defun wait-until-button-pressed ()
-  ;; TODO
-  t
-  )
+  (ros::rate 2)
+  (while (ros::ok)
+    (ros::sleep)
+    (ros::spin-once)
+    (if (*button-pressed*)
+      (return))
+    )
+  t)
 
-(defun get-pick-up-place ()
-  (let (pose-stamped)
-    (setq pose-stamped (instance geometry_msgs::PoseStamped :init))
-    (send pose-stamped :header :frame_id "eng2/1f")
-    (send pose-stamped :pose :pose :position :x -9.0)
-    (send pose-stamped :pose :pose :position :y 2.2)
-    (send pose-stamped :pose :pose :position :z 0.0)
-    (send pose-stamped :pose :pose :orientation :x 0)
-    (send pose-stamped :pose :pose :orientation :y 0)
-    (send pose-stamped :pose :pose :orientation :z 0)
-    (send pose-stamped :pose :pose :orientation :w 1.0)
-    (list 1 pose-stamped)))
-
-(defun get-initial-place ()
-  (let (pose-stamped)
-    (setq pose-stamped (instance geometry_msgs::PoseStamped :init))
-    (send pose-stamped :header :frame_id "eng2/7f")
-    (send pose-stamped :pose :pose :position :x 2.1)
-    (send pose-stamped :pose :pose :position :y 6.5)
-    (send pose-stamped :pose :pose :position :z 0.0)
-    (send pose-stamped :pose :pose :orientation :x 0)
-    (send pose-stamped :pose :pose :orientation :y 0)
-    (send pose-stamped :pose :pose :orientation :z 0)
-    (send pose-stamped :pose :pose :orientation :w 1.0)
-    (list 7 pose-stamped)))
 
 (defun main ()
-  (get
+  (dxl-armed-turtlebot-init)
+  (ros::subscribe "/pressed" std_msgs::Bool #'callback-button-pressed)
+
+  (setq *floor-initial* (ros::get-param "~floor_initial"))
+  (setq *pose-initial* (ros::get-param "~pose_initial"))
+  (setq *floor-pickup* (ros::get-param "~floor_pickup"))
+  (setq *pose-pickup* (ros::get-param "~pose_pickup"))
+
+  (send-move-base-goal
+    (elt *pose-initial* 0)
+    (elt *pose-initial* 1)
+    (elt *pose-initial* 2)
+    (elt *pose-initial* 3)
+    (elt *pose-initial* 4)
+    (elt *pose-initial* 5)
+    (elt *pose-initial* 6)
+    (elt *pose-initial* 7)
+    :wait t
+    )
+
+  (wait-until-button-pressed)
+  (send *ri* :speak-jp "食べ物を取りに行ってきます")
+
+  (move-elevator *floor-pickup*)
+  (send-move-base-goal
+    (elt *pose-pickup* 0)
+    (elt *pose-pickup* 1)
+    (elt *pose-pickup* 2)
+    (elt *pose-pickup* 3)
+    (elt *pose-pickup* 4)
+    (elt *pose-pickup* 5)
+    (elt *pose-pickup* 6)
+    (elt *pose-pickup* 7)
+    :wait t
+    )
+
+  (send *ri* :speak-jp "食べ物をかごにいれてボタンを押して下さい")
+  (wait-until-button-pressed)
+
+  (move-elevator *floor-initial*)
+  (send-move-base-goal
+    (elt *pose-initial* 0)
+    (elt *pose-initial* 1)
+    (elt *pose-initial* 2)
+    (elt *pose-initial* 3)
+    (elt *pose-initial* 4)
+    (elt *pose-initial* 5)
+    (elt *pose-initial* 6)
+    (elt *pose-initial* 7)
+    :wait t
+    )
   )
+
+(main)

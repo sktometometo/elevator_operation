@@ -1,7 +1,6 @@
 #!/usr/bin/env roseus
 
 (ros::roseus-add-srvs "elevator_operation")
-(ros::roseus-add-msgs "move_base_msgs")
 (ros::roseus-add-msgs "std_msgs")
 
 (load "package://fetcheus/fetch-interface.l")

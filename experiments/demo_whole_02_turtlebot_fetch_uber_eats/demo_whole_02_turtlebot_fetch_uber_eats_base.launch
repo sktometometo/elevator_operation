@@ -1,6 +1,6 @@
 <launch>
-    <arg name="device_spinal"/>
-    <arg name="device_button"/>
+    <arg name="device_spinal" default="/dev/ttyUSB2"/>
+    <arg name="device_button" default="/dev/ttyACM0"/>
 
     <arg name="switchbot_token_yaml" default="/home/sktometometo/switchbot.yaml"/>
 
@@ -24,4 +24,9 @@
             port: $(arg device_button)
         </rosparam>
     </node>
+
+    <include
+        file="$(find voicevox)/launch/voicevox_texttospeech.launch"
+        />
+
 </launch>

@@ -65,6 +65,19 @@
       )
     t))
 
+(defun move-elevator (target-floor-name)
+  (if (not (boundp *move-elevator-action-client*))
+    (progn
+        (setq *move-elevator-action-client* (instance ros::simple-action-client :init "/move_elevator" move_elevator::MoveElevatorAction))
+        (send *move-elevator-action-client* :wait-for-server)))
+  (let (result (goal (instance move_elevator::MoveElevatorGoal :init)))
+    (send goal :target_floor_name target-floor-name)
+    (send *move-elevator-action-client* :send-goal goal)
+    (send *move-elevator-action-client* :wait-for-result)
+    (setq result (send *move-elevator-action-client* :get-result))
+    (send result :success))
+  )
+
 (defun call-look-at-target (topic-name frame-id)
   (let ((req (instance elevator_operation::LookAtTargetRequest :init)))
     (send req :frame_id frame-id)
