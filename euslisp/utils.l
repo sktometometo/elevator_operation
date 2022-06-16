@@ -20,7 +20,7 @@
     (setq *move-base-action-client* (instance ros::simple-action-client :init "/move_base" move_base_msgs::MoveBaseAction))
     (send *move-base-action-client* :wait-for-server)
     )
-  (let (result (goal (instance move_base_msgs::MoveBaseGoal :init)))
+  (let ((goal (instance move_base_msgs::MoveBaseGoal :init)))
     (ros::ros-warn "got a goal x: ~A, y: ~A, z: ~A, qx: ~A, qy: ~A, qz: ~A, qw: ~A on frame ~A"
                    x y z qx qy qz qw frame-id)
     (send goal :target_pose :header :frame_id frame-id)
@@ -37,7 +37,6 @@
       (progn
         (ros::ros-warn "waiting for a result of a goal")
         (send *move-base-action-client* :wait-for-result :timeout timeout)
-        (setq result (send *move-base-action-client* :get-result))
         )))
   )
 

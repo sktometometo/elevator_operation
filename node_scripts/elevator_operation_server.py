@@ -347,7 +347,7 @@ class ElevatorOperationServer(object):
         while not rospy.is_shutdown():
             # press button again
             self.switchbot_ros_client.control_device(
-                self.elevator_configuration[target_floor]['buttons'][target_button_type],
+                self.elevator_configuration[target_floor]['buttons'][target_floor_button_type],
                 'press',
                 wait=True
             )
