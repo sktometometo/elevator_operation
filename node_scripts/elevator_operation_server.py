@@ -188,7 +188,14 @@ class ElevatorOperationServer(object):
         self.set_global_inflation_radius(self.default_global_inflation_radius)
         self.set_local_inflation_radius(self.default_local_inflation_radius)
 
-    def start_door_detector(self, input_topic_points, elevator_door_frame_id):
+    def start_door_detector(self,
+                            input_topic_points,
+                            elevator_door_frame_id,
+                            door_dimension_x,
+                            door_dimension_y,
+                            door_dimension_z,
+                            door_position_offset='[0,0,0]',
+                            door_rotation_offset='[0,0,0]'):
 
         if self.roslaunch_parent is not None:
             return False
@@ -197,7 +204,13 @@ class ElevatorOperationServer(object):
             '/launch/elevator_door_detector.launch'
         cli_args = [roslaunch_path,
                 'input_topic_points:={}'.format(input_topic_points),
-                'elevator_door_frame_id:={}'.format(elevator_door_frame_id)]
+                'elevator_door_frame_id:={}'.format(elevator_door_frame_id),
+                'door_position_offset:={}'.format(door_position_offset),
+                'door_rotation_offset:={}'.format(door_rotation_offset),
+                'door_dimension_x:={}'.format(door_dimension_x),
+                'door_dimension_y:={}'.format(door_dimension_y),
+                'door_dimension_z:={}'.format(door_dimension_z),
+                ]
         roslaunch_file = [(
                 roslaunch.rlutil.resolve_launch_arguments(cli_args)[0],
                 cli_args[1:]
@@ -256,7 +269,10 @@ class ElevatorOperationServer(object):
         # start door detection
         self.start_door_detector(
                 self.input_topic_points,
-                self.elevator_configuration[self.current_floor]['door_frame_id']
+                self.elevator_configuration[self.current_floor]['door_frame_id'],
+                self.elevator_configuration[self.current_floor]['door_dimensions'][0],
+                self.elevator_configuration[self.current_floor]['door_dimensions'][1],
+                self.elevator_configuration[self.current_floor]['door_dimensions'][2],
                 )
 
         # Reset altitude
@@ -321,7 +337,10 @@ class ElevatorOperationServer(object):
         # start door detection
         self.start_door_detector(
                 self.input_topic_points,
-                self.elevator_configuration[target_floor]['door_frame_id']
+                self.elevator_configuration[target_floor]['door_frame_id'],
+                self.elevator_configuration[target_floor]['door_dimensions'][0],
+                self.elevator_configuration[target_floor]['door_dimensions'][1],
+                self.elevator_configuration[target_floor]['door_dimensions'][2],
                 )
 
         # look to the door
