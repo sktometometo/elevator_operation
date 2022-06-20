@@ -1,5 +1,7 @@
 (ros::roseus-add-msgs "move_base_msgs")
+(ros::load-ros-manifest "move_base_msgs")
 (ros::roseus-add-srvs "elevator_operation")
+(ros::load-ros-manifest "elevator_operation")
 
 (defun update-model (&key (robot-type "fetch"))
   (if (equal robot-type "fetch")
@@ -13,11 +15,14 @@
       (send *ri* :angle-vector-raw (send *robot* :angle-vector) 500)))
   )
 
-(defun send-move-base-goal (x y z qx qy qz qw frame-id &key (wait t))
+(defun send-move-base-goal (x y z qx qy qz qw frame-id &key (wait t) (timeout 60))
   (if (not (boundp `*move-base-action-client*))
     (setq *move-base-action-client* (instance ros::simple-action-client :init "/move_base" move_base_msgs::MoveBaseAction))
+    (send *move-base-action-client* :wait-for-server)
     )
-  (let (result (goal (instance move_base_msgs::MoveBaseGoal :init)))
+  (let ((goal (instance move_base_msgs::MoveBaseGoal :init)))
+    (ros::ros-warn "got a goal x: ~A, y: ~A, z: ~A, qx: ~A, qy: ~A, qz: ~A, qw: ~A on frame ~A"
+                   x y z qx qy qz qw frame-id)
     (send goal :target_pose :header :frame_id frame-id)
     (send goal :target_pose :pose :position :x x)
     (send goal :target_pose :pose :position :y y)
@@ -27,10 +32,11 @@
     (send goal :target_pose :pose :orientation :z qz)
     (send goal :target_pose :pose :orientation :w qw)
     (send *move-base-action-client* :send-goal goal)
+    (ros::ros-warn "send a goal")
     (if wait
       (progn
-        (send *move-base-action-client* :wait-for-result)
-        (setq result (send *move-base-action-client* :get-result))
+        (ros::ros-warn "waiting for a result of a goal")
+        (send *move-base-action-client* :wait-for-result :timeout timeout)
         )))
   )
 
@@ -64,6 +70,22 @@
       (look-at-target-with-head coords-base-to-target :robot-type robot-type)
       )
     t))
+
+(defun move-elevator (target-floor-name)
+  (if (not (boundp `*move-elevator-action-client*))
+    (progn
+        (setq *move-elevator-action-client*
+              (instance ros::simple-action-client :init
+                        "/elevator_operation_server/move_elevator"
+                        elevator_operation::moveelevatoraction))
+        (send *move-elevator-action-client* :wait-for-server)))
+  (let (result (goal (instance elevator_operation::MoveElevatorGoal :init)))
+    (send goal :target_floor_name target-floor-name)
+    (send *move-elevator-action-client* :send-goal goal)
+    (send *move-elevator-action-client* :wait-for-result)
+    (setq result (send *move-elevator-action-client* :get-result))
+    (send result :success))
+  )
 
 (defun call-look-at-target (topic-name frame-id)
   (let (res (req (instance elevator_operation::LookAtTargetRequest :init)))

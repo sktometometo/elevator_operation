@@ -17,6 +17,9 @@
   (setq *rest-elevator* (send msg :data))
   )
 
+(defun add-wall-collision-object (msg)
+  )
+
 (defun main()
   (fetch-init)
   (ros::subscribe "~door_is_open" std_msgs::Bool #'callback-door-is-open)
