@@ -98,19 +98,19 @@
             pkg="tf2_ros"
             type="static_transform_publisher"
             name="elevator_7f_frame_publisher"
-            args="2 -32.5 1 0 0 1.57 eng2/7f eng2/7f/elevator_door"
+            args="2 -33 1 1.57 0 0 eng2/7f eng2/7f/elevator_door"
             />
         <node
             pkg="tf2_ros"
             type="static_transform_publisher"
             name="elevator_3f_frame_publisher"
-            args="2 -32.5 1 0 0 1.57 eng2/3f eng2/3f/elevator_door"
+            args="2 -33 1 1.57 0 0 eng2/3f eng2/3f/elevator_door"
             />
         <node
             pkg="tf2_ros"
             type="static_transform_publisher"
             name="elevator_1f_frame_publisher"
-            args="2 -32.5 1 0 0 1.57 eng2/1f eng2/1f/elevator_door"
+            args="2.3 -33 1 1.57 0 0 eng2/1f eng2/1f/elevator_door"
             />
         <node
             pkg="tf2_ros"

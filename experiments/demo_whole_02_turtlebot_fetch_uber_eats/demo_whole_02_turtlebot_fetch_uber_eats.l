@@ -37,6 +37,8 @@
   (ros::spin-once)
 
   (ros::ros-info "moving to initial pose")
+  (send-move-base-goal 0 0 0 0 0 0 1 "base_link" :wait nil)
+  (unix::sleep 1)
   (send-move-base-goal
     (elt *pose-initial* 0)
     (elt *pose-initial* 1)
@@ -47,6 +49,7 @@
     (elt *pose-initial* 6)
     (elt *pose-initial* 7)
     :wait t
+    :timeout 0
     )
 
   (wait-until-button-pressed)
@@ -56,6 +59,8 @@
   (move-elevator *floor-pickup*)
 
   (ros::ros-info "moving to pickup pose" *pose-pickup*)
+  (send-move-base-goal 0 0 0 0 0 0 1 "base_link" :wait nil)
+  (unix::sleep 1)
   (send-move-base-goal
     (elt *pose-pickup* 0)
     (elt *pose-pickup* 1)
@@ -66,6 +71,7 @@
     (elt *pose-pickup* 6)
     (elt *pose-pickup* 7)
     :wait t
+    :timeout 0
     )
 
   (send *ri* :speak-jp "食べ物をかごにいれてボタンを押して下さい")
@@ -74,6 +80,8 @@
   (ros::ros-info "moving to floor-initial ~A" *floor-initial*)
   (move-elevator *floor-initial*)
 
+  (send-move-base-goal 0 0 0 0 0 0 1 "base_link" :wait nil)
+  (unix::sleep 1)
   (send-move-base-goal
     (elt *pose-initial* 0)
     (elt *pose-initial* 1)
@@ -84,6 +92,7 @@
     (elt *pose-initial* 6)
     (elt *pose-initial* 7)
     :wait t
+    :timeout 0
     )
   )
 
