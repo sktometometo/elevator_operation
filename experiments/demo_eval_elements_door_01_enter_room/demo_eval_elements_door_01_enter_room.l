@@ -16,8 +16,8 @@
   (ros::subscribe "~door_is_open" std_msgs::Bool #'callback-door-is-open)
 
   (setq *door-frame-id* (ros::get-param "~door_frame_id" ))
-  (setq *pose-inside-room* (ros::get-param "~pose_inside_room"))
   (setq *pose-outside-room* (ros::get-param "~pose_outside_room"))
+  (setq *pose-inside-room* (ros::get-param "~pose_inside_room"))
 
   (send-move-base-goal
     (elt *pose-outside-room* 0)
@@ -31,14 +31,25 @@
     :wait t
     )
 
-  (call-look-at-target "~look_at" *door-frame-id*)
+  (if (not (call-look-at-target "~look_at" *door-frame-id*))
+    (progn
+        (ros::ros-error "look at failed")
+        (exit 1)
+        )
+    (progn
+      (ros::ros-info "look at success")
+      )
+    )
 
   (send *ri* :speak-jp "ごめんください")
 
+  (ros::rate 1)
   (while (ros::ok)
     (ros::spin-once)
+    (ros::sleep)
+    (ros::ros-info "waiting for door to open: ~A" *door-is-open*)
     (if *door-is-open*
-      (break))
+      (return))
     )
 
   (send *ri* :speak-jp "失礼します")
