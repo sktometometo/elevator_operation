@@ -7,46 +7,62 @@
 (load "package://fetcheus/fetch-interface.l")
 (load "package://elevator_operation/euslisp/utils.l")
 
-(setq *door-is-open* nil)
-(defun callback-door-is-open (msg)
-  (setq *door-is-open* (send msg :data))
+(setq *elevator-movement* "")
+(setq *elevator-movement-change-flag* nil)
+(defun callback-elevator-movement (msg)
+  (if (not (equal *elevator-movement* (send msg :data)))
+    (setq *elevator-movement-change-flag* t)
+    )
+  (setq *elevator-movement* (send msg :data))
   )
 
-(setq *rest-elevator* nil)
-(defun callback-rest-elevator (msg)
-  (setq *rest-elevator* (send msg :data))
-  )
-
-(defun add-wall-collision-object (msg)
+(setq *current-floor* nil)
+(defun callback-current-floor (msg)
+  (setq *current-floor* (send msg :data))
   )
 
 (defun main()
   (fetch-init)
-  (ros::subscribe "~door_is_open" std_msgs::Bool #'callback-door-is-open)
-  (ros::subscribe "~rest_elevator" std_msgs::Bool #'callback-rest-elevator)
+  (ros::subscribe "/elevator_state_publisher/elevator_movement" std_msgs::String #'callback-elevator-movement)
+  (ros::subscribe "/elevator_state_publisher/current_floor" std_msgs::Int16 #'callback-current-floor)
 
-  (setq *door-frame-id* (ros::get-param "~door_frame_id" ))
-  (setq *duration-open* (ros::get-param "~duration_open"))
-  (setq *pose-inside-elevator* (ros::get-param "~pose_inside_elevator"))
+  ;;(setq *pose-inside-elevator* (ros::get-param "~pose_inside_elevator"))
 
-  (add-collision-objects)
+  ;;(add-collision-objects)
 
-  (move-arm-pre-pose)
+  ;;(move-arm-pre-pose)
 
-  (call-look-at-target "~look_at" *door-frame-id*)
+  ;;(call-look-at-target "~look_at" *door-frame-id*)
 
+  (ros::rate 10)
   (while (ros::ok)
+    (ros::sleep)
     (ros::spin-once)
-    (if (and *door-is-open* *rest-elevator*)
-      (break))
+    (ros::ros-info "em: ~A cf: ~A" *elevator-movement* *current-floor*)
+    (if *elevator-movement-change-flag*
+      (progn
+        (cond
+          ((equal *elevator-movement* "halt")
+             (send *ri* :speak-jp (format nil "~A階です" *current-floor*))
+             (ros::ros-info "~A階です" *current-floor*)
+             )
+          ((equal *elevator-movement* "down_accel")
+             (send *ri* :speak-jp "下へ参ります")
+             (ros::ros-info "下へ参ります")
+             )
+          ((equal *elevator-movement* "up_accel")
+             (send *ri* :speak-jp "上へ参ります")
+             (ros::ros-info "上へ参ります")
+             )
+          )
+        (setq *elevator-movement-change-flag* nil)
+        )
+      )
     )
 
   (send *ri* :speak-jp "到着しました")
-
-
-  (move-arm-press)
-
   (ros::ros-info "Finished.")
+  (exit)
   )
 
 (main)
