@@ -1,0 +1,40 @@
+<launch>
+    <arg name="initial_floor" default="7" />
+    <arg name="launch_spinal" default="true" />
+    <arg name="device_spinal" default="/dev/ttyUSB0" />
+
+    <!-- elevator operation server -->
+    <node pkg="elevator_operation" type="elevator_state_publisher.py" name="elevator_state_publisher" output="screen">
+        <remap from="~input_barometer" to="/spinal/baro" />
+        <remap from="~input_accel" to="/lowpass_filter/output" />
+        <remap from="~change_floor" to="/change_floor_server/input" />
+
+        <rosparam subst_value="true">
+            initial_floor: $(arg initial_floor)
+            threshold_altitude: 1
+            threshold_accel: 0.2
+        </rosparam>
+        <rosparam
+            ns="elevator_config"
+            command="load"
+            file="$(find elevator_operation)/config/config_state_publisher.yaml"
+            />
+    </node>
+
+    <!-- spinal (Imu, barometer and so on) -->
+    <group ns="/spinal" if="$(arg launch_spinal)">
+        <node pkg="rosserial_python" type="serial_node.py" name="fetch_spinal" output="screen">
+            <rosparam subst_value="true">
+                baud: 921600
+                port: $(arg device_spinal)
+            </rosparam>
+        </node>
+    </group>
+
+    <!-- LPF for accel -->
+    <node pkg="elevator_operation" type="lowpass_filter.py" name="lowpass_filter">
+        <rosparam subst_value="true">
+            freq_cutoff: 0.5
+        </rosparam>
+    </node>
+</launch>
