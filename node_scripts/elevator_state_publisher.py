@@ -6,6 +6,7 @@ import rospy
 
 from spinal.msg import Barometer
 from std_msgs.msg import String
+from std_msgs.msg import Bool
 from std_msgs.msg import Int16
 from std_msgs.msg import Float32
 
@@ -16,6 +17,7 @@ class ElevatorStatePublisher(object):
 
         self.pub_current_floor = rospy.Publisher('~current_floor', Int16, queue_size=1)
         self.pub_elevator_movement = rospy.Publisher('~elevator_movement', String, queue_size=1)
+        self.pub_rest_elevator = rospy.Publisher('~rest_elevator', Bool, queue_size=1)
 
         self.pub_change_floor = rospy.Publisher('~change_floor', String, queue_size=1)
         self._start_subscriber()
@@ -29,6 +31,7 @@ class ElevatorStatePublisher(object):
 
         self.state_current_floor = initial_floor
         self.state_elevator_movement = 'halt'
+        self.state_time_elevator_movement_changed = rospy.Time.now()
         self.prestate_elevator_movement = 'halt'
 
         self.param_threshold_altitude = threshold_altitude
@@ -45,30 +48,37 @@ class ElevatorStatePublisher(object):
             rate.sleep()
 
             # update elevator movement state
-            acc_diff = self.state_acc - self.state_stable_accel
+            acc_diff = self.state_acc - self.param_stable_accel
             if self.state_elevator_movement == 'halt':
-                if acc_diff > self.threshold_accel:
+                if acc_diff > self.param_threshold_accel:
                     self.state_elevator_movement = 'up_accel'
-                elif acc_diff < - self.threshold_accel:
+                elif acc_diff < - self.param_threshold_accel:
                     self.state_elevator_movement = 'down_accel'
             elif self.state_elevator_movement == 'up_accel':
-                if acc_diff <= self.threshold_accel:
+                if acc_diff <= self.param_threshold_accel:
                     self.state_elevator_movement = 'up_stable'
             elif self.state_elevator_movement == 'up_stable':
-                if acc_diff < - self.threshold_accel:
+                if acc_diff < - self.param_threshold_accel:
                     self.state_elevator_movement = 'up_decel'
             elif self.state_elevator_movement == 'up_decel':
-                if acc_diff >= - self.threshold_accel:
+                if acc_diff >= - self.param_threshold_accel:
                     self.state_elevator_movement = 'halt'
             elif self.state_elevator_movement == 'down_accel':
-                if acc_diff >= - self.threshold_accel:
+                if acc_diff >= - self.param_threshold_accel:
                     self.state_elevator_movement = 'down_stable'
             elif self.state_elevator_movement == 'down_stable':
-                if acc_diff > self.threshold_accel:
+                if acc_diff > self.param_threshold_accel:
                     self.state_elevator_movement = 'down_decel'
             elif self.state_elevator_movement == 'down_decel':
-                if acc_diff <= self.threshold_accel:
+                if acc_diff <= self.param_threshold_accel:
                     self.state_elevator_movement = 'halt'
+            if self.state_elevator_movement != self.prestate_elevator_movement:
+                self.state_time_elevator_movement_changed = rospy.Time.now()
+
+            # make elevator movement state to halt when state not changed in given duration
+            if rospy.Time.now() - self.state_time_elevator_movement_changed > rospy.Duration(30):
+                self.state_elevator_movement = 'halt'
+                self.state_time_elevator_movement_changed = rospy.Time.now()
 
             # update current floor state
             altitude_diff_list = [
@@ -77,12 +87,12 @@ class ElevatorStatePublisher(object):
                     'altitude_diff':
                     (entry['altitude'] - self.elevator_config[self.param_anchor_floor]['altitude']) - (self.state_altitude - self.param_anchor_altitude)
                 }
-                for key, entry in self.elevator_configuration.items()]
+                for key, entry in self.elevator_config.items()]
             nearest_entry = min(
                 altitude_diff_list,
                 key=lambda x: math.fabs(x['altitude_diff'])
             )
-            if math.fabs(nearest_entry['altitude_diff']) < self.threshold_altitude:
+            if math.fabs(nearest_entry['altitude_diff']) < self.param_threshold_altitude:
                 self.state_current_floor = nearest_entry['floor']
 
             # change floor if state is changed to halt
@@ -100,6 +110,17 @@ class ElevatorStatePublisher(object):
                     math.fabs(self.state_altitude - self.param_anchor_altitude) < self.param_threshold_altitude:
                 self._update_anchor_floor_and_altitude()
 
+            # echo and publish
+            rospy.loginfo('=====================')
+            rospy.loginfo('current_floor: {}'.format(self.state_current_floor))
+            rospy.loginfo('elevator_movement: {}'.format(self.state_elevator_movement))
+            self.pub_current_floor.publish(Int16(data=self.state_current_floor))
+            self.pub_elevator_movement.publish(String(data=self.state_elevator_movement))
+            if self.state_current_floor == 'halt':
+                self.pub_rest_elevator.publish(Bool(data=True))
+            else:
+                self.pub_rest_elevator.publish(Bool(data=False))
+
             # store state to prestate
             self.prestate_elevator_movement = self.state_elevator_movement
 
@@ -110,6 +131,9 @@ class ElevatorStatePublisher(object):
         self.param_anchor_time = rospy.Time.now()
 
     def _start_subscriber(self):
+
+        self.state_altitude = None
+        self.state_acc = None
 
         self.subscriber_barometer = rospy.Subscriber(
             '~input_barometer',
@@ -122,8 +146,9 @@ class ElevatorStatePublisher(object):
 
         rate = rospy.Rate(1)
         while not rospy.is_shutdown() \
-                and self.state_altitude is not None \
-                and self.state_acc is not None:
+                and self.state_altitude is None \
+                and self.state_acc is None:
+            rospy.loginfo('waiting for message...')
             rate.sleep()
 
     def _callback_barometer(self, msg):
@@ -133,3 +158,9 @@ class ElevatorStatePublisher(object):
     def _callback_imu(self, msg):
 
         self.state_acc = msg.data
+
+
+if __name__ == '__main__':
+    rospy.init_node('elevator_state_publisher')
+    node = ElevatorStatePublisher()
+    node.spin()
