@@ -11,10 +11,9 @@
     <arg name="initial_floor" default="7" />
 
     <arg name="robot_type" default="fetch" />
-    <arg name="local_mode" default="false" />
 
     <!-- elevator operation server -->
-    <node pkg="elevator_operation" type="elevator_operation_server.py" name="elevator_operation_server" output="screen" unless="$(arg local_mode)">
+    <node pkg="elevator_operation" type="elevator_operation_server.py" name="elevator_operation_server" output="screen">
         <remap from="~input_door_point_checker" to="/elevator_door_opening_checker/output" />
         <remap from="~input_barometer" to="/spinal/baro" />
         <remap from="~input_accel" to="/lowpass_filter/output" />
@@ -32,26 +31,6 @@
             ns="elevator_configuration"
             command="load"
             file="$(find elevator_operation)/config/config.yaml"
-            />
-    </node>
-    <node pkg="elevator_operation" type="elevator_operation_server.py" name="elevator_operation_server" output="screen" if="$(arg local_mode)">
-        <remap from="~input_door_point_checker" to="/elevator_door_opening_checker/output" />
-        <remap from="~input_barometer" to="/spinal/baro" />
-        <remap from="~input_accel" to="/lowpass_filter/output" />
-        <remap from="~look_at" to="/look_at_target_server/look_at_target" />
-        <remap from="~change_floor" to="/change_floor_server/input" />
-        <rosparam subst_value="true">
-            use_dynamic_reconfigure: $(arg use_dynamic_reconfigure)
-            input_topic_points: $(arg input_topic_points)
-            initial_floor: 7
-            threshold_door_points: 10
-            threshold_altitude: 1
-            threshold_accel: 0.2
-        </rosparam>
-        <rosparam
-            ns="elevator_configuration"
-            command="load"
-            file="$(find elevator_operation)/config/config_local.yaml"
             />
     </node>
 
@@ -93,59 +72,28 @@
     </node>
 
     <!-- elevator_frame -->
-    <group unless="$(arg local_mode)">
-        <node
-            pkg="tf2_ros"
-            type="static_transform_publisher"
-            name="elevator_7f_frame_publisher"
-            args="2 -33 1 1.57 0 0 eng2/7f eng2/7f/elevator_door"
-            />
-        <node
-            pkg="tf2_ros"
-            type="static_transform_publisher"
-            name="elevator_3f_frame_publisher"
-            args="2 -33 1 1.57 0 0 eng2/3f eng2/3f/elevator_door"
-            />
-        <node
-            pkg="tf2_ros"
-            type="static_transform_publisher"
-            name="elevator_1f_frame_publisher"
-            args="2.3 -33 1 1.57 0 0 eng2/1f eng2/1f/elevator_door"
-            />
-        <node
-            pkg="tf2_ros"
-            type="static_transform_publisher"
-            name="static_73b2_frame_publisher"
-            args="0 -0.6 1 0 0 0 eng2/7f/73B2 eng2/7f/73B2/door"
-            />
-    </group>
-    <group if="$(arg local_mode)">
-        <node
-            pkg="tf2_ros"
-            type="static_transform_publisher"
-            name="offset_base_link_publisher"
-            args="0 0 0.3 0 0 0 base_link base_link_offset"
-            />
-        <node pkg="elevator_operation" type="store_base_frame.py" name="store_elevator_frame">
-            <rosparam subst_value="true">
-                fixed_frame_id: odom
-                base_frame_id: base_link_offset
-                stored_frame_id: elevator_door_frame
-            </rosparam>
-        </node>
-        <node pkg="elevator_operation" type="store_base_frame.py" name="store_outside_frame">
-            <rosparam subst_value="true">
-                fixed_frame_id: odom
-                base_frame_id: base_link
-                stored_frame_id: outside_frame
-            </rosparam>
-        </node>
-        <node pkg="elevator_operation" type="store_base_frame.py" name="store_inside_frame">
-            <rosparam subst_value="true">
-                fixed_frame_id: odom
-                base_frame_id: base_link
-                stored_frame_id: inside_frame
-            </rosparam>
-        </node>
-    </group>
+    <node
+        pkg="tf2_ros"
+        type="static_transform_publisher"
+        name="elevator_7f_frame_publisher"
+        args="2 -33 1 1.57 0 0 eng2/7f eng2/7f/elevator_door"
+        />
+    <node
+        pkg="tf2_ros"
+        type="static_transform_publisher"
+        name="elevator_3f_frame_publisher"
+        args="2 -33 1 1.57 0 0 eng2/3f eng2/3f/elevator_door"
+        />
+    <node
+        pkg="tf2_ros"
+        type="static_transform_publisher"
+        name="elevator_1f_frame_publisher"
+        args="2.3 -33 1 1.57 0 0 eng2/1f eng2/1f/elevator_door"
+        />
+    <node
+        pkg="tf2_ros"
+        type="static_transform_publisher"
+        name="static_73b2_frame_publisher"
+        args="0 -0.6 1 0 0 0 eng2/7f/73B2 eng2/7f/73B2/door"
+        />
 </launch>
