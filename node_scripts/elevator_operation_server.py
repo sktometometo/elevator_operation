@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import math
-
 import actionlib
 import rospy
 import roslaunch
@@ -10,13 +8,9 @@ from switchbot_ros.switchbot_ros_client import SwitchBotROSClient
 
 import dynamic_reconfigure.client
 
-from spinal.msg import Barometer
-from std_msgs.msg import Bool
 from std_msgs.msg import Int16
-from std_msgs.msg import Int64
 from std_msgs.msg import String
-from std_msgs.msg import Float32
-from sensor_msgs.msg import PointCloud2
+from elevator_operation.msg import DoorState
 
 from elevator_operation.srv import LookAtTarget
 
@@ -37,151 +31,91 @@ class ElevatorOperationServer(object):
         self.roslaunch_parent = None
 
         #######################################################################
-        # Dynamic Reconfigure Client
-        #######################################################################
-        self.use_dynamic_reconfigure = rospy.get_param('~use_dynamic_reconfigure', True)
-        if self.use_dynamic_reconfigure:
-            self.client_global_inflater = dynamic_reconfigure.client.Client("/move_base/global_costmap/inflater")
-            self.client_local_inflater = dynamic_reconfigure.client.Client("/move_base/local_costmap/inflater")
-
-        #######################################################################
-        # Inflation Radius
-        #######################################################################
-        if self.use_dynamic_reconfigure:
-            self.default_global_inflation_radius = self.get_global_inflation_radius()
-            self.default_local_inflation_radius = self.get_local_inflation_radius()
-
-        #######################################################################
-        # Elevator Operation State
-        #######################################################################
-        self.current_floor = rospy.get_param('~initial_floor', 7)
-
-        #######################################################################
         # Elevator Configuration
         #######################################################################
-        config = rospy.get_param('~elevator_configuration', [])
-        self.elevator_configuration = {
-            entry['floor']: entry for entry in config}
+        elevator_config = rospy.get_param('~elevator_config', [])
+        self.elevator_config = {entry['floor']: entry for entry in elevator_config}
 
         #######################################################################
-        # Door Openinig Checker
+        # ROS Clients
         #######################################################################
-        # variables for door opening checker
-        self.door_is_open = False
-        # parameters for door opening checker
-        self.input_topic_points = rospy.get_param(
-                '~input_topic_points')
-        self.threshold_door_points = rospy.get_param(
-            '~threshold_door_points', 10)
-
-        #######################################################################
-        # Elevator Floor Detection
-        #######################################################################
-        # parameters for elevator floor detection
-        self.threshold_altitude = rospy.get_param('~threshold_altitude', 2)
-        # variables for floor detection
-        self.elevator_floor = self.current_floor
-        self.initial_elevator_floor = 0
-        self.initial_altitude = 0
-        # initialize
-        self._reset_initial_altitude(self.current_floor)
-
-        #######################################################################
-        # Elevator Moving Detection
-        #######################################################################
-        # variables for floor moving detection
-        self.elevator_state = 'halt'
-        self.rest_elevator = False
-        # parameters for floor moving detection
-        self.threshold_accel = rospy.get_param('~threshold_accel', 0.2)
-        self.initial_accel = rospy.wait_for_message(
-            '~input_accel', Float32, timeout=rospy.Duration(30)).data
-
-        #######################################################################
-        # SwitchBot ROS Client
-        #######################################################################
+        self.client_global_inflater = dynamic_reconfigure.client.Client("/move_base/global_costmap/inflater")
+        self.client_local_inflater = dynamic_reconfigure.client.Client("/move_base/local_costmap/inflater")
         self.switchbot_ros_client = SwitchBotROSClient()
-
-        #######################################################################
-        # Look At server client
-        #######################################################################
         self.look_at_client = rospy.ServiceProxy('~look_at', LookAtTarget)
+        self.move_base_client = actionlib.SimpleActionClient('/move_base', MoveBaseAction)
 
         #######################################################################
-        # Move Base client
+        # Get Default Inflation Radius
         #######################################################################
-        self.move_base_client = actionlib.SimpleActionClient(
-            '/move_base',
-            MoveBaseAction
-        )
+        self.update_default_inflation_radius()
 
         #######################################################################
-        # change floor client
+        # Elevator State and Subscribers
         #######################################################################
-        self.pub_change_floor = rospy.Publisher(
-            '~change_floor', String, queue_size=1)
-
-        #######################################################################
-        # ROS Publisher
-        #######################################################################
-        self.pub_door_is_open = rospy.Publisher(
-            '~door_is_open', Bool, queue_size=1)
-        self.pub_current_elevator_floor = rospy.Publisher(
-            '~current_elevator_floor', Int16, queue_size=1)
-        self.pub_rest_elevator = rospy.Publisher(
-            '~rest_elevator', Bool, queue_size=1)
-
-        #######################################################################
-        # ROS Subscribers
-        #######################################################################
-        self.subscriber_door_points = rospy.Subscriber(
-            '~input_door_point_checker',
-            Int64,
-            self._callback_door_points)
-        self.subscriber_barometer = rospy.Subscriber(
-            '~input_barometer',
-            Barometer,
-            self._callback_barometer)
-        self.subscriber_imu = rospy.Subscriber(
-            '~input_accel',
-            Float32,
-            self._callback_imu)
+        self.state_door_state = None
+        self.state_elevator_movement = None
+        self.state_current_floor = None
+        self.subscriber_door_state = rospy.Subscriber(
+            '~state_door_state',
+            DoorState,
+            self.callback_door_state)
+        self.subscriber_elevator_movement = rospy.Subscriber(
+            '~state_elevator_movement',
+            String,
+            self.callback_elevator_movement)
+        self.subscriber_current_floor = rospy.Subscriber(
+            '~state_current_floor',
+            Int16,
+            self.callback_current_floor)
+        rate = rospy.Rate(1)
+        while not rospy.is_shutdown() and \
+                (self.state_door_state is None or
+                 self.state_elevator_movement is None or
+                 self.state_current_floor is None):
+            rospy.loginfo('waiting for state messages...')
+            rate.sleep()
 
         #######################################################################
         # ROS Action Server
         #######################################################################
         self.action_server = actionlib.SimpleActionServer(
-                '~move_elevator',
-                MoveElevatorAction,
-                self.execute_cb,
-                auto_start=False
-                )
+            '~move_elevator',
+            MoveElevatorAction,
+            self.execute_cb,
+            auto_start=False
+        )
         self.action_server.start()
 
         rospy.loginfo('initialized')
 
-    def get_global_inflation_radius(self):
+    def callback_door_state(self, msg):
+        self.state_door_state = msg.state
 
-        cfg = self.client_global_inflater.get_configuration()
-        return cfg['inflation_radius']
+    def callback_elevator_movement(self, msg):
+        self.state_elevator_movement = msg.data
 
-    def get_local_inflation_radius(self):
+    def callback_current_floor(self, msg):
+        self.state_current_floor = msg.data
 
-        cfg = self.client_local_inflater.get_configuration()
-        return cfg['inflation_radius']
+    def get_inflation_radius(self):
 
-    def set_global_inflation_radius(self, inflation_radius):
+        cfg_global = self.client_global_inflater.get_configuration()
+        cfg_local = self.client_local_inflater.get_configuration()
+        return cfg_global['inflation_radius'], cfg_local['inflation_radius']
 
-        self.client_global_inflater.update_configuration({'inflation_radius': inflation_radius})
+    def set_inflation_radius(self, global_inflation_radius, local_inflation_radius):
 
-    def set_local_inflation_radius(self, inflation_radius):
-
-        self.client_local_inflater.update_configuration({'inflation_radius': inflation_radius})
+        self.client_global_inflater.update_configuration(
+            {'inflation_radius': global_inflation_radius})
+        self.client_local_inflater.update_configuration(
+            {'inflation_radius': local_inflation_radius})
 
     def update_default_inflation_radius(self):
 
-        self.default_global_inflation_radius = self.get_global_inflation_radius()
-        self.default_local_inflation_radius = self.get_local_inflation_radius()
+        global_inflation_radius, local_inflation_radius = self.get_inflation_radius()
+        self.default_global_inflation_radius = global_inflation_radius
+        self.default_local_inflation_radius = local_inflation_radius
 
     def recover_default_inflation_radius(self):
 
@@ -195,193 +129,47 @@ class ElevatorOperationServer(object):
                             door_dimension_y,
                             door_dimension_z,
                             door_position_offset='[0,0,0]',
-                            door_rotation_offset='[0,0,0]'):
+                            door_rotation_offset='[0,0,0]',
+                            duration_timeout=10):
 
         if self.roslaunch_parent is not None:
-            return False
+            self.stop_door_detector()
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, True)
-        roslaunch_path = rospkg.RosPack().get_path('elevator_operation') +\
-            '/launch/elevator_door_detector.launch'
+        roslaunch_path = rospkg.RosPack().get_path('elevator_operation') + '/launch/elevator_door_detector.launch'
         cli_args = [roslaunch_path,
-                'input_topic_points:={}'.format(input_topic_points),
-                'elevator_door_frame_id:={}'.format(elevator_door_frame_id),
-                'door_position_offset:={}'.format(door_position_offset),
-                'door_rotation_offset:={}'.format(door_rotation_offset),
-                'door_dimension_x:={}'.format(door_dimension_x),
-                'door_dimension_y:={}'.format(door_dimension_y),
-                'door_dimension_z:={}'.format(door_dimension_z),
-                ]
+                    'input_topic_points:={}'.format(input_topic_points),
+                    'elevator_door_frame_id:={}'.format(elevator_door_frame_id),
+                    'door_position_offset:={}'.format(door_position_offset),
+                    'door_rotation_offset:={}'.format(door_rotation_offset),
+                    'door_dimension_x:={}'.format(door_dimension_x),
+                    'door_dimension_y:={}'.format(door_dimension_y),
+                    'door_dimension_z:={}'.format(door_dimension_z),
+                    ]
         roslaunch_file = [(
-                roslaunch.rlutil.resolve_launch_arguments(cli_args)[0],
-                cli_args[1:]
-                )]
+            roslaunch.rlutil.resolve_launch_arguments(cli_args)[0],
+            cli_args[1:]
+        )]
         rospy.logwarn('roslaunch_file: {}'.format(roslaunch_file))
         self.roslaunch_parent = roslaunch.parent.ROSLaunchParent(
             uuid, roslaunch_file
         )
         self.roslaunch_parent.start()
-        rospy.wait_for_message(input_topic_points, PointCloud2)
-        rospy.sleep(10)
-        return True
+        try:
+            rospy.wait_for_message(
+                    '/elevator_door_opening_checker/door_state',
+                    DoorState,
+                    timeout=duration_timeout)
+            return True
+        except (rospy.ROSException, rospy.ROSInterruptException) as e:
+            rospy.logerr('{}'.format(e))
+            self.stop_door_detector()
+            return False
 
     def stop_door_detector(self):
 
-        if self.roslaunch_parent is None:
-            return False
-        self.roslaunch_parent.shutdown()
-        self.roslaunch_parent = None
-        return True
-
-    def execute_cb(self, goal):
-        result = MoveElevatorResult()
-        if goal.target_floor_name not in [ v['floor_name'] for k, v in self.elevator_configuration.items()]:
-            rospy.logerr('target_floor: {} not in elevator_configuration'.format(goal.target_floor_name))
-            result.success = False
-            self.action_server.set_aborted(result)
-        else:
-            target_floor = filter(
-                    lambda v: v['floor_name'] == goal.target_floor_name,
-                    self.elevator_configuration.values()
-                    )[0]['floor']
-            self.move_elevator(target_floor)
-            result.success = True
-            self.action_server.set_succeeded(result)
-
-    def move_elevator(self, target_floor):
-
-        # move robot to the front of elevator
-        self._move_to(
-            self.elevator_configuration[self.current_floor]['outside_pose'],
-            wait=True
-        )
-        rospy.loginfo('moved to the front of elevator')
-
-        # set inflation_radius
-        if self.use_dynamic_reconfigure:
-            self.update_default_inflation_radius()
-            self.set_global_inflation_radius(0.2)
-            self.set_local_inflation_radius(0.2)
-
-        # look to the door
-        self.look_at_client(self.elevator_configuration[self.current_floor]['door_frame_id'])
-        rospy.loginfo('look at elevator')
-
-        # start door detection
-        self.start_door_detector(
-                self.input_topic_points,
-                self.elevator_configuration[self.current_floor]['door_frame_id'],
-                self.elevator_configuration[self.current_floor]['door_dimensions'][0],
-                self.elevator_configuration[self.current_floor]['door_dimensions'][1],
-                self.elevator_configuration[self.current_floor]['door_dimensions'][2],
-                )
-
-        # Reset altitude
-        self._reset_initial_altitude(self.current_floor)
-        rospy.loginfo('reset altitude')
-
-        # Call elevator
-        if target_floor > self.current_floor:
-            button_type = 'up'
-        else:
-            button_type = 'down'
-        ret = self.switchbot_ros_client.control_device(
-            self.elevator_configuration[self.current_floor]['buttons'][button_type],
-            'press',
-            wait=True
-        )
-        rospy.loginfo('Call elevator: {}'.format(ret))
-
-        # Wait until arrive
-        rate = rospy.Rate(1)
-        while not rospy.is_shutdown():
-            rate.sleep()
-            rospy.loginfo('waiting: door_is_open: {}'.format(self.door_is_open))
-            if self.door_is_open:
-                break
-
-        # Ride on when arrive
-        self._move_to(
-            self.elevator_configuration[self.current_floor]['inside_pose'],
-        )
-        ## Call elevator from target floor
-        if target_floor < self.current_floor:
-            target_floor_button_type = 'up'
-        else:
-            target_floor_button_type = 'down'
-        self.switchbot_ros_client.control_device(
-            self.elevator_configuration[target_floor]['buttons'][target_floor_button_type],
-            'press',
-            wait=True
-        )
-        ## press current floor button until riding on
-        rate = rospy.Rate(0.2)
-        while not rospy.is_shutdown():
-            # press button again
-            ret = self.switchbot_ros_client.control_device(
-                self.elevator_configuration[self.current_floor]['buttons'][button_type],
-                'press',
-                wait=True
-            )
-            rate.sleep()
-            if self._move_to_wait(timeout=rospy.Duration(1)):
-                break
-        ret = self._move_to_result()
-
-        # stop door detector
-        self.stop_door_detector()
-
-        # Change map
-        self.pub_change_floor.publish(
-            String(data=self.elevator_configuration[target_floor]['map_name']))
-
-        # start door detection
-        self.start_door_detector(
-                self.input_topic_points,
-                self.elevator_configuration[target_floor]['door_frame_id'],
-                self.elevator_configuration[target_floor]['door_dimensions'][0],
-                self.elevator_configuration[target_floor]['door_dimensions'][1],
-                self.elevator_configuration[target_floor]['door_dimensions'][2],
-                )
-
-        # look to the door
-        self.look_at_client(self.elevator_configuration[target_floor]['door_frame_id'])
-        rospy.loginfo('look at elevator')
-
-        # Wait until arrive
-        rate = rospy.Rate(1)
-        while not rospy.is_shutdown():
-            rate.sleep()
-            rospy.loginfo('door: {}, floor: {}, rest: {}'.format(
-                self.door_is_open, self.elevator_floor, self.rest_elevator))
-            if self.door_is_open \
-                    and self.elevator_floor == target_floor \
-                    and self.rest_elevator:
-                break
-
-        # Get off when arrive
-        self._move_to(
-            self.elevator_configuration[target_floor]['outside_pose'],
-        )
-        rate = rospy.Rate(0.2)
-        while not rospy.is_shutdown():
-            # press button again
-            self.switchbot_ros_client.control_device(
-                self.elevator_configuration[target_floor]['buttons'][target_floor_button_type],
-                'press',
-                wait=True
-            )
-            rate.sleep()
-            if self._move_to_wait(timeout=rospy.Duration(1)):
-                break
-
-        # stop door detector
-        self.stop_door_detector()
-
-        self.current_floor = target_floor
-        if self.use_dynamic_reconfigure:
-            self.recover_default_inflation_radius()
-
-        rospy.loginfo('Finished.')
+        if self.roslaunch_parent is not None:
+            self.roslaunch_parent.shutdown()
+            self.roslaunch_parent = None
 
     def _move_to(self, target_pose, wait=False):
 
@@ -401,61 +189,143 @@ class ElevatorOperationServer(object):
         goal.target_pose.pose.orientation.w = orientation[3]
         self.move_base_client.send_goal(goal)
         if wait:
-            self._move_to_wait()
+            self.move_base_client.wait_for_result(timeout=timeout)
 
-    def _move_to_wait(self, timeout=rospy.Duration(0)):
-        ret = self.move_base_client.wait_for_result(timeout=timeout)
-        rospy.logwarn('ret: {}'.format(ret))
-        return ret
-
-    def _move_to_result(self):
-        ret = self.move_base_client.get_result()
-        rospy.logwarn('ret: {}'.format(ret))
-        return ret
-
-    def _reset_initial_altitude(self, floor):
-        self.initial_elevator_floor = floor
-        self.initial_altitude = rospy.wait_for_message(
-            '~input_barometer', Barometer, timeout=rospy.Duration(30)).altitude
-
-    def _callback_door_points(self, msg):
-
-        rospy.logdebug('door points: {}'.format(msg.data))
-        if msg.data < self.threshold_door_points:
-            self.door_is_open = True
+    def execute_cb(self, goal):
+        result = MoveElevatorResult()
+        if goal.target_floor_name not in [v['floor_name'] for k, v in self.elevator_config.items()]:
+            rospy.logerr('target_floor: {} not in elevator_config'.format(goal.target_floor_name))
+            result.success = False
+            self.action_server.set_aborted(result)
         else:
-            self.door_is_open = False
-        self.pub_door_is_open.publish(Bool(data=self.door_is_open))
+            target_floor = filter(
+                lambda v: v['floor_name'] == goal.target_floor_name,
+                self.elevator_configuration.values()
+            )[0]['floor']
+            ret = self.move_floor_with_elevator(target_floor)
+            result.success = ret
+            self.action_server.set_succeeded(result)
 
-    def _callback_barometer(self, msg):
+    def move_floor_with_elevator(self, target_floor):
 
-        rospy.logdebug('altitude: {}'.format(msg.altitude))
-        altitude_diff_list = [
-            {
-                'floor': key,
-                'altitude_diff':
-                (entry['altitude'] - self.elevator_configuration[self.initial_elevator_floor]['altitude']) -
-                (msg.altitude - self.initial_altitude)
-            }
-            for key, entry in self.elevator_configuration.items()]
-        nearest_entry = min(
-            altitude_diff_list,
-            key=lambda x: math.fabs(x['altitude_diff'])
+        start_floor = self.state_current_floor
+
+        # move robot to the front of elevator
+        self._move_to(
+            self.elevator_config[start_floor]['outside_pose'],
+            wait=True
         )
-        rospy.logdebug('nearest_entry: {}'.format(nearest_entry))
-        if math.fabs(nearest_entry['altitude_diff']) < self.threshold_altitude:
-            self.elevator_floor = nearest_entry['floor']
-            self.pub_current_elevator_floor.publish(
-                Int16(data=self.elevator_floor))
+        rospy.loginfo('moved to the front of elevator')
 
-    def _callback_imu(self, msg):
+        # set inflation_radius
+        self.update_default_inflation_radius()
+        self.set_inflation_radius(0.2, 0.2)
 
-        rospy.logdebug('acc z: {}'.format(msg.data))
-        if math.fabs(msg.data - self.initial_accel) < self.threshold_accel:
-            self.rest_elevator = True
+        # look to the door
+        self.look_at_client(self.elevator_config[start_floor]['door_frame_id'])
+        rospy.loginfo('look at elevator')
+
+        # Start door detection
+        ret = self.start_door_detector(
+            self.input_topic_points,
+            self.elevator_config[start_floor]['door_frame_id'],
+            self.elevator_config[start_floor]['door_dimensions'][0],
+            self.elevator_config[start_floor]['door_dimensions'][1],
+            self.elevator_config[start_floor]['door_dimensions'][2],
+        )
+        if not ret:
+            self.recover_default_inflation_radius()
+            return False
+
+        # Get button in current floor and target floor
+        if target_floor > start_floor:
+            button_from = self.elevator_config[start_floor]['buttons']['up']
+            button_to = self.elevator_config[target_floor]['buttons']['down']
         else:
-            self.rest_elevator = False
-        self.pub_rest_elevator.publish(Bool(data=self.rest_elevator))
+            button_from = self.elevator_config[start_floor]['buttons']['down']
+            button_to = self.elevator_config[target_floor]['buttons']['up']
+
+        # Call elevator
+        ret = self.switchbot_ros_client.control_device(
+            button_from,
+            'press',
+            wait=True
+        )
+        rospy.loginfo('Call elevator: {}'.format(ret))
+
+        # Wait until arrive
+        rate = rospy.Rate(1)
+        while not rospy.is_shutdown():
+            rate.sleep()
+            rospy.loginfo('waiting for door to open.')
+            rospy.loginfo('door_state: {}'.format(self.state_door_state))
+            if self.state_door_state == DoorState.OPEN:
+                break
+
+        # Ride on when arrive
+        self._move_to(
+            self.elevator_config[start_floor]['inside_pose']
+        )
+        # Call elevator from target floor
+        self.switchbot_ros_client.control_device(
+            button_to,
+            'press',
+            wait=True
+        )
+        # press current floor button until riding on
+        rate = rospy.Rate(0.2)
+        while not rospy.is_shutdown():
+            # press button again
+            ret = self.switchbot_ros_client.control_device(
+                button_from,
+                'press',
+                wait=True
+            )
+            rate.sleep()
+            if self.move_base_client.wait_for_result(timeout=rospy.Duration(1)):
+                break
+
+        # look to the door
+        self.look_at_client(self.elevator_config[start_floor]['door_frame_id'])
+
+        # Wait until arrive
+        rate = rospy.Rate(1)
+        while not rospy.is_shutdown():
+            rate.sleep()
+            rospy.loginfo('door: {}, floor: {}, movement: {}'.format(
+                self.state_door_state,
+                self.state_current_floor,
+                self.state_elevator_movement
+                ))
+            if self.state_door_state == DoorState.OPEN \
+                    and self.state_current_floor == target_floor \
+                    and self.state_elevator_movement == 'halt':
+                break
+
+        # Get off when arrive
+        self._move_to(
+            self.elevator_config[target_floor]['outside_pose'],
+        )
+        rate = rospy.Rate(0.2)
+        while not rospy.is_shutdown():
+            # press button again
+            self.switchbot_ros_client.control_device(
+                button_to,
+                'press',
+                wait=True
+            )
+            rate.sleep()
+            if self.move_base_client.wait_for_result(timeout=rospy.Duration(1)):
+                break
+
+        # stop door detector
+        self.stop_door_detector()
+
+        # recover inflation radius
+        self.recover_default_inflation_radius()
+
+        rospy.loginfo('Finished.')
+        return True
 
 
 if __name__ == '__main__':
