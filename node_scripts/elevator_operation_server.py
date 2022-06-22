@@ -16,8 +16,8 @@ from elevator_operation.srv import LookAtTarget
 
 from move_base_msgs.msg import MoveBaseAction
 from move_base_msgs.msg import MoveBaseGoal
-from elevator_operation.msg import MoveElevatorAction
-from elevator_operation.msg import MoveElevatorResult
+from elevator_operation.msg import MoveFloorWithElevatorAction
+from elevator_operation.msg import MoveFloorWithElevatorResult
 
 
 class ElevatorOperationServer(object):
@@ -31,29 +31,46 @@ class ElevatorOperationServer(object):
         self.roslaunch_parent = None
 
         #######################################################################
-        # Elevator Configuration
+        # Elevator Config
         #######################################################################
         elevator_config = rospy.get_param('~elevator_config', [])
         self.elevator_config = {entry['floor']: entry for entry in elevator_config}
+        rospy.logwarn('elevator config')
+
+        #######################################################################
+        # Door Detection Input
+        #######################################################################
+        self.input_topic_points = rospy.get_param('~input_topic_points')
 
         #######################################################################
         # ROS Clients
         #######################################################################
-        self.client_global_inflater = dynamic_reconfigure.client.Client("/move_base/global_costmap/inflater")
-        self.client_local_inflater = dynamic_reconfigure.client.Client("/move_base/local_costmap/inflater")
+        global_costmap_inflation_plugin = rospy.get_param(
+                '~global_costmap_inflation_plugin',
+                '/move_base/global_costmap/inflation_layer'
+                )
+        local_costmap_inflation_plugin = rospy.get_param(
+                '~local_costmap_inflation_plugin',
+                '/move_base/local_costmap/inflation_layer'
+                )
+        self.client_global_inflater = dynamic_reconfigure.client.Client(global_costmap_inflation_plugin)
+        self.client_local_inflater = dynamic_reconfigure.client.Client(local_costmap_inflation_plugin)
         self.switchbot_ros_client = SwitchBotROSClient()
+        self.switchbot_ros_client.action_client.wait_for_server()
         self.look_at_client = rospy.ServiceProxy('~look_at', LookAtTarget)
         self.move_base_client = actionlib.SimpleActionClient('/move_base', MoveBaseAction)
+        rospy.logwarn('create ROS client')
 
         #######################################################################
         # Get Default Inflation Radius
         #######################################################################
         self.update_default_inflation_radius()
+        rospy.logwarn('get inflation radius')
 
         #######################################################################
         # Elevator State and Subscribers
         #######################################################################
-        self.state_door_state = None
+        self.state_door_state = DoorState.UNKNOWN
         self.state_elevator_movement = None
         self.state_current_floor = None
         self.subscriber_door_state = rospy.Subscriber(
@@ -73,15 +90,20 @@ class ElevatorOperationServer(object):
                 (self.state_door_state is None or
                  self.state_elevator_movement is None or
                  self.state_current_floor is None):
-            rospy.loginfo('waiting for state messages...')
+            rospy.logwarn('waiting for state messages...')
+            rospy.logwarn('door: {}, movement: {}, floor: {}'.format(
+                self.state_door_state,
+                self.state_elevator_movement,
+                self.state_current_floor
+                ))
             rate.sleep()
 
         #######################################################################
         # ROS Action Server
         #######################################################################
         self.action_server = actionlib.SimpleActionServer(
-            '~move_elevator',
-            MoveElevatorAction,
+            '~move_floor_with_elevator',
+            MoveFloorWithElevatorAction,
             self.execute_cb,
             auto_start=False
         )
@@ -119,8 +141,10 @@ class ElevatorOperationServer(object):
 
     def recover_default_inflation_radius(self):
 
-        self.set_global_inflation_radius(self.default_global_inflation_radius)
-        self.set_local_inflation_radius(self.default_local_inflation_radius)
+        self.set_inflation_radius(
+                self.default_global_inflation_radius,
+                self.default_local_inflation_radius
+                )
 
     def start_door_detector(self,
                             input_topic_points,
@@ -159,6 +183,7 @@ class ElevatorOperationServer(object):
                     '/elevator_door_opening_checker/door_state',
                     DoorState,
                     timeout=duration_timeout)
+            rospy.loginfo('Door detector started')
             return True
         except (rospy.ROSException, rospy.ROSInterruptException) as e:
             rospy.logerr('{}'.format(e))
@@ -189,10 +214,11 @@ class ElevatorOperationServer(object):
         goal.target_pose.pose.orientation.w = orientation[3]
         self.move_base_client.send_goal(goal)
         if wait:
-            self.move_base_client.wait_for_result(timeout=timeout)
+            self.move_base_client.wait_for_result()
 
     def execute_cb(self, goal):
-        result = MoveElevatorResult()
+        rospy.loginfo('action started')
+        result = MoveFloorWithElevatorResult()
         if goal.target_floor_name not in [v['floor_name'] for k, v in self.elevator_config.items()]:
             rospy.logerr('target_floor: {} not in elevator_config'.format(goal.target_floor_name))
             result.success = False
@@ -200,11 +226,12 @@ class ElevatorOperationServer(object):
         else:
             target_floor = filter(
                 lambda v: v['floor_name'] == goal.target_floor_name,
-                self.elevator_configuration.values()
+                self.elevator_config.values()
             )[0]['floor']
             ret = self.move_floor_with_elevator(target_floor)
             result.success = ret
             self.action_server.set_succeeded(result)
+        rospy.loginfo('action finished')
 
     def move_floor_with_elevator(self, target_floor):
 
@@ -233,6 +260,7 @@ class ElevatorOperationServer(object):
             self.elevator_config[start_floor]['door_dimensions'][1],
             self.elevator_config[start_floor]['door_dimensions'][2],
         )
+        rospy.loginfo('result of door detector: {}'.format(ret))
         if not ret:
             self.recover_default_inflation_radius()
             return False
@@ -246,12 +274,13 @@ class ElevatorOperationServer(object):
             button_to = self.elevator_config[target_floor]['buttons']['up']
 
         # Call elevator
+        rospy.loginfo('Calling switchbot device: {} action: press'.format(button_from))
         ret = self.switchbot_ros_client.control_device(
             button_from,
             'press',
             wait=True
         )
-        rospy.loginfo('Call elevator: {}'.format(ret))
+        rospy.loginfo('Call elevator from start floor: {}'.format(ret))
 
         # Wait until arrive
         rate = rospy.Rate(1)

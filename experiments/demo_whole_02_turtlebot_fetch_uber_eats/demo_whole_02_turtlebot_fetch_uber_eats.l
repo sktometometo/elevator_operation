@@ -52,6 +52,8 @@
     :timeout 0
     )
 
+  (send *ri* :speak-jp "ボタンを押して取りに行きます")
+
   (wait-until-button-pressed)
   (send *ri* :speak-jp "食べ物を取りに行ってきます")
 
@@ -94,6 +96,11 @@
     :wait t
     :timeout 0
     )
+
+  (send *ri* :speak-jp "食べ物を取ってきました")
+
+  (exit)
   )
+
 
 (main)
