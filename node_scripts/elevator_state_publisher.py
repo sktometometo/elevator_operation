@@ -4,7 +4,6 @@ import math
 
 import rospy
 
-from spinal.msg import Barometer
 from std_msgs.msg import String
 from std_msgs.msg import Bool
 from std_msgs.msg import Int16
@@ -135,10 +134,10 @@ class ElevatorStatePublisher(object):
         self.state_altitude = None
         self.state_acc = None
 
-        self.subscriber_barometer = rospy.Subscriber(
-            '~input_barometer',
-            Barometer,
-            self._callback_barometer)
+        self.subscriber_altitude = rospy.Subscriber(
+            '~input_altitude',
+            Float32,
+            self._callback_altitude)
         self.subscriber_imu = rospy.Subscriber(
             '~input_accel',
             Float32,
@@ -151,9 +150,9 @@ class ElevatorStatePublisher(object):
             rospy.loginfo('waiting for message...')
             rate.sleep()
 
-    def _callback_barometer(self, msg):
+    def _callback_altitude(self, msg):
 
-        self.state_altitude = msg.altitude
+        self.state_altitude = msg.data
 
     def _callback_imu(self, msg):
 
