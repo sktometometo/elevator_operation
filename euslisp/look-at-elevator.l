@@ -10,26 +10,22 @@
   (let (success
         (res (instance elevator_operation::LookAtTargetResponse :init)))
     (setq success (look-at-target-frame (send req :frame_id) :robot-type *robot-type*))
-    (ros::ros-warn "makabe")
     (send res :success success)
     res))
 
 (defun main()
   (ros::roseus "look_at_elevator_server")
-  (setq *robot-type* (ros::get-param "~robot_type"))
+  (setq *robot-type* (ros::get-param "~robot_type" ""))
   (cond
     ((equal *robot-type* "fetch")
       (load "package://fetcheus/fetch-interface.l")
       (load "package://jsk_fetch_startup/euslisp/navigation-utils.l")
       (fetch-init)
       (setq *robot* *fetch*))
-    ((equal *robot-type* "magni")
+    (t
       (setq *move-base-action-client* (instance ros::simple-action-client :init "/move_base" move_base_msgs::MoveBaseAction))
       (send *move-base-action-client* :wait-for-server)
       )
-    (t
-      (ros::ros-error "Unsupported robot type: ~A" *robot-type*)
-      (exit 1))
     )
   (setq *tfl* (instance ros::transform-listener :init))
   (ros::advertise-service "~look_at_target" elevator_operation::LookAtTarget #'handler-start-look-at-target)

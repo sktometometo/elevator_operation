@@ -50,10 +50,8 @@
   (cond
     ((equal robot-type "fetch")
       (send *ri* :go-pos 0 0 (rad2deg theta)))
-    ((equal robot-type "magni")
-      (send-move-base-goal 0 0 0 0 0 (sin (/ theta 2)) (cos (/ theta 2)) "base_link" :wait t))
     (t
-      (ros::ros-error "Unsupported robot type: ~A" robot-type))
+      (send-move-base-goal 0 0 0 0 0 (sin (/ theta 2)) (cos (/ theta 2)) "base_link" :wait t))
     ))
 
 (defun look-at-target-frame (target-frame-id &key (robot-type "fetch"))
