@@ -1,24 +1,10 @@
 <launch>
     <arg name="input_topic_points" default="/head_camera/depth_registered/points" />
 
-    <arg name="launch_spinal" default="true" />
-    <arg name="device_spinal" default="/dev/ttyUSB0" />
-    <arg name="use_dynamic_reconfigure" default="true" />
-
     <arg name="launch_switchbot_client" default="false" />
     <arg name="switchbot_token_yaml" default="/var/lib/robot/credentials/switchbot_token.yaml" />
 
-    <arg name="initial_floor" default="7" />
-
     <arg name="robot_type" default="fetch" />
-
-    <!-- elevator state publisher -->
-    <include
-        file="$(find elevator_operation)/launch/elevator_state_publisher.launch">
-        <arg name="initial_floor" default="$(arg initial_floor)" />
-        <arg name="launch_spinal" default="$(arg launch_spinal)" />
-        <arg name="device_spinal" default="$(arg device_spinal)" />
-    </include>
 
     <!-- elevator operation server -->
     <node pkg="elevator_operation" type="elevator_operation_server.py" name="elevator_operation_server" output="screen">
