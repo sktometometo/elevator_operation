@@ -16,12 +16,8 @@ class AltitudeCalculator(object):
         sub_pressure = message_filters.Subscriber('~input_pressure', Float32)
         sub_temparature = message_filters.Subscriber('~input_temperature', Float32)
 
-        msg_pressure = rospy.wait_for_message('~input_pressure', Float32)
-        self.p_b = msg_pressure.data
-        self.altitude_b = 0
-
-        self.srv = rospy.Service('~reset_altitude', Trigger, self.handler)
-
+        # Pa
+        self.p_b = rospy.get_param('~sea_level_pressure', 101325)
         # J K^-1 mol^-1
         self.gas_constant = rospy.get_param('~gas_const', 8.31446261815324)
         # m sec^-2
@@ -34,21 +30,15 @@ class AltitudeCalculator(object):
                 slop=slop,
                 allow_headerless=True
                 )
+        self.ts.registerCallback(self.callback)
 
         rospy.loginfo('initialized')
-
-    def handler(self, req):
-
-        msg_pressure = rospy.wait_for_message('~input_pressure', Float32)
-        self.p_b = msg_pressure.data
-        self.altitude_b = 0
-        return TriggerResponse(success=True)
 
     def callback(self, msg_pressure, msg_temp):
 
         p = msg_pressure.data
-        T = msg_temp.data + 273
-        altitude = altitude_b - ( self.gas_constant * T / self.grav_accel ) * math.log( p / self.p_b )
+        T = msg_temp.data
+        altitude = ( math.pow(self.p_b / p, 1 / 5.257) - 1 ) * ( T + 273.15) / 0.0065
         msg = Float32()
         msg.data = altitude
         self.pub.publish(msg)
