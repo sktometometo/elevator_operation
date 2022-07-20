@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import rospy
-from spinal.msg import Imu
 from std_msgs.msg import Float32
 import scipy
 from scipy import signal
@@ -24,48 +23,23 @@ class LowpassFilterNode(object):
         self.pre_acc_z = None
         self.initialized = False
         self.pub = rospy.Publisher('~output', Float32, queue_size=1)
-        self.sub = rospy.Subscriber('/spinal/imu', Imu, self.callback)
+        self.sub = rospy.Subscriber('~input', Float32, self.callback)
 
     def callback(self, msg):
 
+        current_stamp = rospy.Time.now()
         if self.pre_acc_z is None or self.pre_time is None:
-            self.pre_acc_z = msg.acc_data[2]
-            self.pre_time = msg.stamp
+            self.pre_acc_z = msg.data
+            self.pre_time = current_stamp
         else:
-            dt = (msg.stamp - self.pre_time).to_sec()
+            dt = (current_stamp - self.pre_time).to_sec()
             fs = 1.0 / dt
             rospy.loginfo('fs: {}'.format(fs))
             self.pre_acc_z = (1 - (self.freq_cutoff / fs)) * self.pre_acc_z \
-                + (self.freq_cutoff / fs) * msg.acc_data[2]
-            self.pre_time = msg.stamp
+                + (self.freq_cutoff / fs) * msg.data
+            self.pre_time = current_stamp
 
         self.pub.publish(Float32(data=self.pre_acc_z))
-
-    def callback_new(self, msg):
-
-        self.buffer.append(msg.acc_data[2])
-        self.buffer_stamp.append(msg.stamp)
-        if len(self.buffer) > self.buffer_length:
-            self.buffer.pop(0)
-            self.buffer_stamp.pop(0)
-            if not self.initialized:
-                # initialize filter
-                duration = 0
-                for i in range(len(self.buffer_stamp)-1):
-                    duration += (self.buffer_stamp[i+1] - self.buffer_stamp[i]).to_sec() / (len(self.buffer_stamp)-1)
-                self.fs = 1.0 / duration
-                rospy.loginfo('fs: {}'.format(self.fs))
-                b, a = signal.butter(self.filter_order, self.freq_cutoff / self.fs, btype='lowpass', fs=self.fs)
-                self.filter_a = a
-                self.filter_b = b
-                self.initialized = True
-        if self.initialized:
-            y = signal.filtfilt(
-                    self.filter_b,
-                    self.filter_a,
-                    self.buffer
-                    )
-            self.pub.publish(Float32(data=y[-1]))
 
 
 if __name__ == '__main__':

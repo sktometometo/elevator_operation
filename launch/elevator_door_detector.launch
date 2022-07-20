@@ -26,5 +26,7 @@
     </node>
     <node pkg="elevator_operation" type="elevator_door_opening_checker.py" name="$(arg prefix)elevator_door_opening_checker">
         <remap from="~input" to="/elevator_operation/elevator_door_points" />
+        <remap from="~output" to="/elevator_operation/elevator_door_points_num" />
+        <remap from="~door_state" to="/elevator_operation/elevator_door_state" />
     </node>
 </launch>
