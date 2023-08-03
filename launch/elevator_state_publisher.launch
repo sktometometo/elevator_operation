@@ -1,8 +1,8 @@
 <launch>
-    <arg name="initial_floor" default="7" />
-    <arg name="device_type" default="" /> <!-- spinal or enviii -->
-    <arg name="device_name" default="/dev/ttyUSB0" />
-    <arg name="robot_type" default="fetch" />
+    <arg name="initial_floor" />
+    <arg name="device_type" /> <!-- spinal or enviii or core2 -->
+    <arg name="device_name" /> <!-- tty -->
+    <arg name="robot_type" /> <!-- fetch or turtlebot or spot -->
 
     <!-- elevator operation server -->
     <node pkg="elevator_operation" type="elevator_state_publisher.py" name="elevator_state_publisher" output="log">
@@ -35,6 +35,14 @@
         file="$(find elevator_operation)/launch/spinal_driver.launch"
         if="$(eval arg('device_type') == 'enviii')" >
         <arg name="device_spinal" value="$(arg device_name)" />
+        <arg name="output_altitude_topic" value="/elevator_altitude" />
+    </include>
+
+    <!-- launch enviii if specified -->
+    <include
+        file="$(find elevator_operation)/launch/m5stack_core2_driver.launch"
+        if="$(eval arg('device_type') == 'core2')" >
+        <arg name="device_name" value="$(arg device_name)" />
         <arg name="output_altitude_topic" value="/elevator_altitude" />
     </include>
 

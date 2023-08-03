@@ -1,0 +1,30 @@
+<launch>
+    <arg name="device" default="/dev/rfcomm1" />
+    <arg name="output_altitude_topic" default="/altitude" />
+
+    <!-- m5stack core2 + dps310 -->
+    <node pkg="rosserial_python" type="serial_node.py" name="m5stack_core2_driver" output="screen">
+        <rosparam subst_value="true">
+            baud: 57600
+            port: $(arg device)
+            frame_id: m5stack_core2_dps310
+            enable_temperature: true
+            enable_imu: true
+            enable_pressure: true
+        </rosparam>
+    </node>
+
+    <!-- calculate altitude from air pressure -->
+    <node pkg="elevator_operation" type="altitude_calculator.py" name="altitude_calculator" output="screen">
+        <remap from="~input_pressure" to="/m5stack_core2_driver/pressure" />
+        <remap from="~input_temperature" to="/m5stack_core2_driver/temperature" />
+        <remap from="~output" to="$(arg output_altitude_topic)" />
+    </node>
+
+    <node
+        pkg="topic_tools"
+        type="transform"
+        name="accel_converter"
+        args="/m5stack_core2_driver/imu /elevator_accel std_msgs/Float32 'std_msgs.msg.Float32(data=m.linear_acceleration.z)' --import std_msgs"
+        />
+</launch>
