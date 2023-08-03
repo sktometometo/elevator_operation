@@ -18,6 +18,7 @@ ros::Publisher pub_imu("~imu", &msg_imu);
 
 char frame_id[128];
 const float grav_accel = 9.80665;
+int oversampling = 1;
 
 bool enable_temperature = true;
 bool enable_pressure = true;
@@ -48,12 +49,13 @@ void init_ros()
   nh.getParam("~enable_temperature", &enable_temperature);
   nh.getParam("~enable_pressure", &enable_pressure);
   nh.getParam("~enable_imu", &enable_imu);
+  nh.getParam("~oversampling", &oversampling);
 }
 
 void setup()
 {
   M5.begin(true, false, true, true);
-  Dps310PressureSensor.begin(Wire);
+  Dps310PressureSensor.begin(Wire, 0x77);
   M5.IMU.Init();
 
   nh.initNode();
@@ -77,7 +79,7 @@ void loop()
 
   if (enable_temperature)
   {
-    if (Dps310PressureSensor.measureTempOnce(dsp310_temperature, 7) != DPS__SUCCEEDED)
+    if (Dps310PressureSensor.measureTempOnce(dsp310_temperature, oversampling) != DPS__SUCCEEDED)
     {
       nh.logerror("Dps310 temperature measurement failed.");
     }
@@ -90,7 +92,7 @@ void loop()
 
   if (enable_pressure)
   {
-    if (Dps310PressureSensor.measurePressureOnce(dsp310_pressure, 7) != DPS__SUCCEEDED)
+    if (Dps310PressureSensor.measurePressureOnce(dsp310_pressure, oversampling) != DPS__SUCCEEDED)
     {
       nh.logerror("Dps310 pressure measurement failed.");
     }
