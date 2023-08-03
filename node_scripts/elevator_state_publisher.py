@@ -115,7 +115,7 @@ class ElevatorStatePublisher(object):
             rospy.loginfo('elevator_movement: {}'.format(self.state_elevator_movement))
             self.pub_current_floor.publish(Int16(data=self.state_current_floor))
             self.pub_elevator_movement.publish(String(data=self.state_elevator_movement))
-            if self.state_current_floor == 'halt':
+            if self.state_elevator_movement == 'halt':
                 self.pub_rest_elevator.publish(Bool(data=True))
             else:
                 self.pub_rest_elevator.publish(Bool(data=False))
