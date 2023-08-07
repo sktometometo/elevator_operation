@@ -91,8 +91,10 @@ class ElevatorStatePublisher(object):
                 altitude_diff_list,
                 key=lambda x: math.fabs(x['altitude_diff'])
             )
-            if math.fabs(nearest_entry['altitude_diff']) < self.param_threshold_altitude:
-                self.state_current_floor = nearest_entry['floor']
+            #if math.fabs(nearest_entry['altitude_diff']) < self.param_threshold_altitude:
+            #    self.state_current_floor = nearest_entry['floor']
+            self.state_current_floor = nearest_entry['floor']
+
 
             # change floor if state is changed to halt
             if self.prestate_elevator_movement != 'halt' and \
@@ -110,12 +112,13 @@ class ElevatorStatePublisher(object):
             #    self._update_anchor_floor_and_altitude()
 
             # echo and publish
-            rospy.loginfo('=====================')
-            rospy.loginfo('current_floor: {}'.format(self.state_current_floor))
-            rospy.loginfo('elevator_movement: {}'.format(self.state_elevator_movement))
+            rospy.logwarn('=====================')
+            rospy.logwarn('current_floor: {}'.format(self.state_current_floor))
+            rospy.logwarn('elevator_movement: {}'.format(self.state_elevator_movement))
+            rospy.logwarn("current altitude: {}".format(self.state_altitude))
             self.pub_current_floor.publish(Int16(data=self.state_current_floor))
             self.pub_elevator_movement.publish(String(data=self.state_elevator_movement))
-            if self.state_elevator_movement == 'halt':
+            if "cel" not in self.state_elevator_movement:
                 self.pub_rest_elevator.publish(Bool(data=True))
             else:
                 self.pub_rest_elevator.publish(Bool(data=False))
