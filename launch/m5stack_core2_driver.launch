@@ -16,7 +16,7 @@
     </node>
 
     <!-- calculate altitude from air pressure -->
-    <node pkg="elevator_operation" type="altitude_calculator.py" name="altitude_calculator" output="screen">
+    <node pkg="elevator_operation" type="altitude_calculator.py" name="altitude_calculator" respawn="true" output="screen">
         <remap from="~input_pressure" to="/m5stack_core2_driver/pressure" />
         <remap from="~input_temperature" to="/m5stack_core2_driver/temperature" />
         <remap from="~output" to="$(arg output_altitude_topic)" />
@@ -26,6 +26,7 @@
         pkg="topic_tools"
         type="transform"
         name="accel_converter"
+        respawn="true"
         args="/m5stack_core2_driver/imu /elevator_accel std_msgs/Float32 'std_msgs.msg.Float32(data=m.linear_acceleration.z)' --import std_msgs"
         />
 </launch>
