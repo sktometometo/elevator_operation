@@ -105,9 +105,9 @@ class ElevatorStatePublisher(object):
                 self._update_anchor_floor_and_altitude()
 
             # update anchor if altitude is not changed
-            if rospy.Time.now() - self.param_anchor_time > rospy.Duration(5) and \
-                    math.fabs(self.state_altitude - self.param_anchor_altitude) < self.param_threshold_altitude:
-                self._update_anchor_floor_and_altitude()
+            #if rospy.Time.now() - self.param_anchor_time > rospy.Duration(5) and \
+            #        math.fabs(self.state_altitude - self.param_anchor_altitude) < self.param_threshold_altitude:
+            #    self._update_anchor_floor_and_altitude()
 
             # echo and publish
             rospy.loginfo('=====================')
@@ -125,6 +125,7 @@ class ElevatorStatePublisher(object):
 
     def _update_anchor_floor_and_altitude(self):
 
+        rospy.loginfo("Anchor floor is updated to {} from {}".format(self.state_current_floor, self.param_anchor_floor))
         self.param_anchor_floor = self.state_current_floor
         self.param_anchor_altitude = self.state_altitude
         self.param_anchor_time = rospy.Time.now()
