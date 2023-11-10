@@ -1,7 +1,7 @@
 <launch>
     <arg name="initial_floor" />
-    <arg name="device_type" /> <!-- spinal or enviii or core2 -->
-    <arg name="device_name" /> <!-- tty -->
+    <arg name="device_type" default="" /> <!-- spinal or enviii or core2 -->
+    <arg name="device_name" default="" /> <!-- tty -->
     <arg name="robot_type" /> <!-- fetch or turtlebot or spot -->
 
     <!-- elevator operation server -->
