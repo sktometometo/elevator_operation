@@ -23,10 +23,13 @@
     </node>
 
     <node
-        pkg="topic_tools"
-        type="transform"
-        name="accel_converter"
+        pkg="elevator_operation"
+        name="m5stack_accel_extractor"
+        type="m5stack_accel_extractor.py"
         respawn="true"
-        args="/m5stack_core2_driver/imu /elevator_accel std_msgs/Float32 'std_msgs.msg.Float32(data=m.linear_acceleration.z)' --import std_msgs"
-        />
+        output="screen"
+        >
+        <remap from="~imu" to="/m5stack_core2_driver/imu" />
+    </node>
+
 </launch>
